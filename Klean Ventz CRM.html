@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Klean Ventz CRM</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="nav-scrim" onclick="closeNav()"></div>
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-badge"><img src="assets/logo.jpg" alt="Klean Ventz"></div>
+      <div class="brand-text">
+        <h1>Klean Ventz</h1>
+        <p id="brand-sub">Residential · New Jersey</p>
+      </div>
+    </div>
+
+    <div class="loc-switch">
+      <div class="eyebrow"><i class="ti ti-map-pin" style="font-size:13px"></i> Location</div>
+      <select id="loc-select" onchange="switchLocation(this.value)">
+        <option value="nj">New Jersey — Residential</option>
+        <option value="mw">Midwest — Commercial</option>
+      </select>
+      <div class="loc-lock"><i class="ti ti-lock" style="font-size:11px"></i> Owner only</div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">Workspace</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="showView('dashboard')"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+      <div class="nav-item" id="nav-customers" onclick="showView('customers')"><i class="ti ti-users"></i> Customers</div>
+      <div class="nav-item" id="nav-jobs" onclick="showView('jobs')"><i class="ti ti-clipboard-list"></i> Jobs</div>
+      <div class="nav-item" id="nav-calendar" onclick="showView('calendar')"><i class="ti ti-calendar"></i> Calendar</div>
+      <div class="nav-item" id="nav-tasks" onclick="showView('tasks')"><i class="ti ti-checklist"></i> Tasks</div>
+      <div class="nav-label">Business</div>
+      <div class="nav-item" id="nav-leadsources" onclick="showView('leadsources')"><i class="ti ti-chart-pie"></i> Lead Sources</div>
+      <div class="nav-item" id="nav-financials" onclick="showView('financials')"><i class="ti ti-chart-bar"></i> Financials</div>
+      <div class="nav-item" id="nav-catalog" onclick="showView('catalog')"><i class="ti ti-package"></i> Services &amp; Products</div>
+    </nav>
+
+    <div class="nav-bottom">
+      <div class="nav-item" id="nav-settings" onclick="showView('settings')"><i class="ti ti-settings"></i> Settings</div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="btn btn-icon menu-btn only-mobile" onclick="toggleNav()"><i class="ti ti-menu-2"></i></button>
+        <div>
+          <div class="page-title" id="page-title">Dashboard</div>
+          <div class="page-sub" id="page-sub">Your day at a glance</div>
+        </div>
+      </div>
+      <div id="topbar-actions"></div>
+    </header>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<div id="modal"></div>
+<div class="toast" id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/views.js"></script>
+<script src="js/leadsources.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/modals.js"></script>
+<script>
+  seedDemo();
+  snapshotLoc('nj');
+  buildMidwest();
+  updateLocUI();
+  showView('dashboard');
+</script>
+</body>
+</html>

@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klean Ventz CRM</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/dist/tabler-icons.min.css">
+<style>
+:root{
+--font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+--color-text-primary:#1A1A18;--color-text-secondary:#6B6B66;--color-text-tertiary:#9A9A93;--color-text-info:#185FA5;
+--color-background-primary:#FFFFFF;--color-background-secondary:#F5F4EF;--color-background-tertiary:#FAFAF7;
+--color-border-tertiary:#E8E6DF;--color-border-secondary:#D6D3CA;
+--border-radius-md:8px;--border-radius-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:14px;color:var(--color-text-primary)}
+.app{display:flex;height:100vh;min-height:600px;background:var(--color-background-tertiary)}
+.sidebar{width:210px;flex-shrink:0;background:var(--color-background-primary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;padding:0}
+.sidebar-logo{padding:14px 16px 12px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:10px}
+.sidebar-logo img{width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#fff}
+.sidebar-logo-text h1{font-size:13px;font-weight:500;line-height:1.2}
+.sidebar-logo-text p{font-size:10px;color:var(--color-text-secondary);margin-top:1px}
+.sidebar-logo-text span{font-size:10px;color:var(--color-text-tertiary)}
+.nav-section{padding:8px 0;flex:1}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;font-size:13px;color:var(--color-text-secondary)}
+.nav-item:hover{background:var(--color-background-secondary);color:var(--color-text-primary)}
+.nav-item.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500}
+.nav-item i{font-size:16px}
+.nav-bottom{padding:8px 0;border-top:0.5px solid var(--color-border-tertiary)}
+.main{flex:1;overflow:auto;display:flex;flex-direction:column;min-width:0}
+.topbar{background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar h2{font-size:16px;font-weight:500}
+.content{padding:20px;flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:transparent;font-size:13px;cursor:pointer;color:var(--color-text-primary);text-decoration:none}
+.btn:hover{background:var(--color-background-secondary)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-primary{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.btn-primary:hover{opacity:.85}
+.btn-success{background:#1D9E75;color:#fff;border-color:#1D9E75}
+.btn-success:hover{opacity:.85}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px 20px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.metric{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 16px}
+.metric-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:4px}
+.metric-val{font-size:22px;font-weight:500}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;font-weight:500;color:var(--color-text-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px}
+td{padding:10px 12px;border-bottom:0.5px solid var(--color-border-tertiary);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--color-background-secondary)}
+.badge{display:inline-flex;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-green{background:#EAF3DE;color:#3B6D11}
+.badge-amber{background:#FAEEDA;color:#854F0B}
+.badge-blue{background:#E6F1FB;color:#185FA5}
+.badge-gray{background:#F1EFE8;color:#5F5E5A}
+.badge-red{background:#FCEBEB;color:#A32D2D}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+label{font-size:12px;color:var(--color-text-secondary);font-weight:500}
+input,select,textarea{width:100%;padding:7px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);font-size:13px;color:var(--color-text-primary);font-family:var(--font-sans)}
+textarea{resize:vertical;min-height:72px}
+.section-title{font-size:12px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:6px}
+.section-title.flush{border:none;margin:0;padding:0}
+.avatar{width:36px;height:36px;border-radius:50%;background:#CECBF6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#3C3489;flex-shrink:0}
+.avatar.sm{width:32px;height:32px;font-size:11px}
+.row-link{cursor:pointer}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--color-background-primary);border-radius:var(--border-radius-lg);width:600px;max-height:92vh;overflow-y:auto;border:0.5px solid var(--color-border-tertiary)}
+.modal-header{padding:16px 20px;border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--color-background-primary);z-index:1}
+.modal-body{padding:20px}
+.modal-footer{padding:12px 20px;border-top:0.5px solid var(--color-border-tertiary);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:var(--color-background-primary)}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--color-text-primary);color:var(--color-background-primary);padding:10px 16px;border-radius:var(--border-radius-md);font-size:13px;z-index:200;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+.service-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:6px;font-size:13px}
+.service-item input[type=checkbox]{width:auto;flex-shrink:0}
+.surcharge-box{background:#FAEEDA;border:0.5px solid #EF9F27;border-radius:var(--border-radius-md);padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.surcharge-box label{color:#854F0B;font-size:12px;font-weight:500;margin:0}
+.history-item{display:flex;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.history-item:last-child{border-bottom:none}
+.dot{width:8px;height:8px;border-radius:50%;background:#1D9E75;margin-top:5px;flex-shrink:0}
+.dot.amber{background:#EF9F27}
+.task-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+.task-row:last-child{border-bottom:none}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day{padding:8px 4px;text-align:center;font-size:12px;border-radius:var(--border-radius-md);cursor:pointer;border:0.5px solid transparent;min-height:38px}
+.cal-day:hover{background:var(--color-background-secondary)}
+.cal-day.has-job{background:#E6F1FB;color:#185FA5;font-weight:500;border-color:#B5D4F4}
+.cal-day.today{border-color:var(--color-text-primary)}
+.cal-day.header{font-weight:500;color:var(--color-text-secondary);cursor:default;background:transparent;min-height:auto;padding:4px}
+.cal-day.header:hover{background:transparent}
+.payment-opts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.payment-opt{padding:6px 12px;border:0.5px solid var(--color-border-secondary);border-radius:20px;font-size:12px;cursor:pointer;background:var(--color-background-primary)}
+.payment-opt.selected{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.addr-suggestions{position:absolute;top:100%;left:0;right:0;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);z-index:50}
+.addr-suggestion{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:0.5px solid var(--color-border-tertiary)}
+.addr-suggestion:last-child{border-bottom:none}
+.addr-suggestion:hover{background:var(--color-background-secondary)}
+.addr-suggestion .main-text{font-weight:500}
+.addr-suggestion .sub-text{font-size:11px;color:var(--color-text-secondary)}
+.addr-wrap{position:relative}
+.optional-tag{font-size:10px;font-weight:400;color:var(--color-text-tertiary);margin-left:4px;text-transform:none;letter-spacing:0}
+.empty{text-align:center;padding:24px;color:var(--color-text-secondary);font-size:13px}
+.empty i{font-size:28px;color:#1D9E75;display:block;margin-bottom:8px}
+@media print{
+ body *{visibility:hidden!important}
+ #modal-container,#modal-container *{visibility:visible!important}
+ #modal-container{position:absolute!important;inset:0!important}
+ #modal-container .modal-bg{background:#fff!important;position:static!important;display:block!important;padding:0!important}
+ #modal-container .modal{box-shadow:none!important;border:none!important;max-height:none!important;width:100%!important;border-radius:0!important;overflow:visible!important}
+ .no-print{display:none!important}
+}
+
+table input{padding:5px 8px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <img id="logo-img" alt="Klean Ventz logo">
+      <div class="sidebar-logo-text">
+        <h1>Klean Ventz</h1>
+        <p id="sidebar-sub">Residential · New Jersey</p>
+        <span>kleanventz.com</span>
+      </div>
+    </div>
+    <div style="padding:10px 12px;border-bottom:0.5px solid var(--color-border-tertiary)">
+      <label style="font-size:10px;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.05em">Location</label>
+      <select id="loc-select" onchange="switchLocation(this.value)" style="margin-top:4px"><option value="nj">New Jersey — Residential</option><option value="mw">Midwest — Commercial</option></select>
+      <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:4px"><i class="ti ti-lock" style="font-size:10px"></i> Owner only</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+      <div class="nav-item" onclick="showView('customers')" id="nav-customers"><i class="ti ti-users"></i> Customers</div>
+      <div class="nav-item" onclick="showView('jobs')" id="nav-jobs"><i class="ti ti-clipboard-list"></i> Jobs</div>
+      <div class="nav-item" onclick="showView('calendar')" id="nav-calendar"><i class="ti ti-calendar"></i> Calendar</div>
+      <div class="nav-item" onclick="showView('financials')" id="nav-financials"><i class="ti ti-chart-bar"></i> Financials</div>
+      <div class="nav-item" onclick="showView('catalog')" id="nav-catalog"><i class="ti ti-package"></i> Services &amp; Products</div>
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-item" onclick="showView('settings')" id="nav-settings"><i class="ti ti-settings"></i> Settings</div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="topbar"><h2 id="page-title">Dashboard</h2><div id="topbar-actions"></div></div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+<div id="modal-container"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const LOGO_SRC='data:image/jpeg;base64,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';
+document.getElementById('logo-img').src=LOGO_SRC;
+const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
+let SERVICES=[
+  {id:'dvc1',name:'Dryer vent cleaning \u2013 up to 2nd floor',price:165,cost:70},
+  {id:'dvc2',name:'Dryer vent cleaning \u2013 above 2nd floor',price:225,cost:90},
+  {id:'bfc1',name:'Bathroom fan vent cleaning \u2013 up to 2nd floor',price:145,cost:60},
+  {id:'bfc2',name:'Bathroom fan vent cleaning \u2013 above 2nd floor',price:195,cost:80},
+  {id:'bn1',name:'Bird/nest removal \u2013 up to 2nd floor',price:185,cost:75},
+  {id:'bn2',name:'Bird/nest removal \u2013 above 2nd floor',price:245,cost:95},
+  {id:'di1',name:'Duct installation',price:350,cost:150},
+  {id:'dr1',name:'Duct rerouting',price:300,cost:130},
+];
+let PRODUCTS=[
+  {id:'p1',name:'Vent cover/cap',price:45,cost:18},{id:'p2',name:'Bird guard',price:55,cost:22},{id:'p3',name:'Vent hose/duct',price:40,cost:15},
+  {id:'p4',name:'Clamp & connector',price:15,cost:5},{id:'p5',name:'Elbow',price:20,cost:7},{id:'p6',name:'Duct connector/extender',price:25,cost:9},
+];
+function jobCost(j){let t=0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.cost||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.cost||0;});return t;}
+function jobCharge(j){let t=j.surchargeAmt||0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.price||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.price||0;});return t;}
+function svcName(id){const s=SERVICES.find(x=>x.id===id);return s?s.name:id;}
+const PAYMENT_METHODS=['Cash','Check','Venmo','Zelle','CashApp','Invoice'];
+const NEXT_SERVICE=[6,12,24,36];
+let LEAD_SOURCES=[];
+const FAKE_ADDRESSES=[
+  {main:'24 Maple Drive',sub:'Manalapan, NJ 07726'},
+  {main:'24 Maple Street',sub:'Marlboro, NJ 07746'},
+  {main:'24 Maple Avenue',sub:'Freehold, NJ 07728'},
+  {main:'24 Maple Court',sub:'Howell, NJ 07731'},
+  {main:'244 Maple Boulevard',sub:'Old Bridge, NJ 08857'},
+];
+function dOff(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function addDays(ds,n){const d=new Date(ds);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+
+let customers=[
+  {id:1,isCompany:false,contactName:'',contactPhone:'',firstName:'Sarah',lastName:'Mitchell',phone:'(732) 555-0142',phone2:'',email:'sarah.m@email.com',address:'24 Maple Dr, Manalapan NJ 07726',leadSource:'Google',serviceRequested:['dvc1'],notes:'Two dryers in basement',lastService:dOff(-360),nextDue:dOff(-6),nextServiceMonths:12,jobs:1,snoozeUntil:''},
+  {id:2,isCompany:false,contactName:'',contactPhone:'',firstName:'Robert',lastName:'Chen',phone:'(732) 555-0210',phone2:'',email:'rchen@email.com',address:'51 Birch Ln, Howell NJ 07731',leadSource:'Referral',serviceRequested:['dvc1'],notes:'',lastService:dOff(-362),nextDue:dOff(3),nextServiceMonths:12,jobs:1,snoozeUntil:''},
+  {id:3,isCompany:true,contactName:'Okafor Properties (David)',contactPhone:'(732) 555-0900',firstName:'David',lastName:'Okafor',phone:'(732) 555-0871',phone2:'',email:'d.okafor@email.com',address:'88 Pine Ave, Marlboro NJ 07746',leadSource:'Nextdoor',serviceRequested:['dvc1','bfc1'],notes:'Landlord \u2014 6 rental units, bill to office',lastService:dOff(-365),nextDue:dOff(0),nextServiceMonths:12,jobs:1,snoozeUntil:''},
+  {id:4,isCompany:false,contactName:'',contactPhone:'',firstName:'Linda',lastName:'Forsythe',phone:'(732) 555-0334',phone2:'',email:'lforsythe@email.com',address:'12 Oak St, Freehold NJ 07728',leadSource:'Yelp',serviceRequested:['bfc1'],notes:'Ring doorbell, dog inside',lastService:dOff(-358),nextDue:dOff(5),nextServiceMonths:12,jobs:0,snoozeUntil:''},
+  {id:5,isCompany:false,contactName:'',contactPhone:'',firstName:'Maria',lastName:'Lopez',phone:'(732) 555-0455',phone2:'',email:'mlopez@email.com',address:'9 Cedar Ct, Old Bridge NJ 08857',leadSource:'Google',serviceRequested:['dvc2'],notes:'3rd floor unit',lastService:dOff(-205),nextDue:dOff(160),nextServiceMonths:12,jobs:0,snoozeUntil:''},
+  {id:6,isCompany:false,contactName:'',contactPhone:'',firstName:'Tom',lastName:'Reilly',phone:'(732) 555-0588',phone2:'',email:'treilly@email.com',address:'7 Elm Rd, Manalapan NJ 07726',leadSource:'Referral',serviceRequested:['dvc1'],notes:'Left voicemail last week',lastService:dOff(-378),nextDue:dOff(-13),nextServiceMonths:12,jobs:1,snoozeUntil:''},
+  {id:7,isCompany:false,contactName:'',contactPhone:'',firstName:'Grace',lastName:'Kim',phone:'(732) 555-0619',phone2:'',email:'gkim@email.com',address:'33 Willow Way, Marlboro NJ 07746',leadSource:'Google',serviceRequested:['dvc1'],notes:'Traveling \u2014 wants a callback',lastService:dOff(-350),nextDue:dOff(40),nextServiceMonths:12,jobs:1,snoozeUntil:''},
+  {id:8,isCompany:false,contactName:'',contactPhone:'',firstName:'Nora',lastName:'Patel',phone:'(732) 555-0733',phone2:'',email:'npatel@email.com',address:'5 Spruce St, Howell NJ 07731',leadSource:'Nextdoor',serviceRequested:['dvc1'],notes:'',lastService:dOff(-345),nextDue:dOff(20),nextServiceMonths:12,jobs:1,snoozeUntil:''},
+];
+let jobs=[
+  {id:1,customerId:4,customerName:'Linda Forsythe',date:dOff(0),time:'10:00',status:'scheduled',services:['bfc1'],products:[],surcharge:false,surchargeAmt:0,total:0,payment:'',notes:'',techNotes:'',photos:[],nextServiceMonths:12},
+  {id:2,customerId:5,customerName:'Maria Lopez',date:dOff(2),time:'09:00',status:'scheduled',services:['dvc2'],products:[],surcharge:true,surchargeAmt:25,total:0,payment:'',notes:'3rd floor unit',techNotes:'',photos:[],nextServiceMonths:12},
+  {id:3,customerId:1,customerName:'Sarah Mitchell',date:dOff(-360),time:'13:00',status:'completed',services:['dvc1'],products:['p1'],surcharge:false,surchargeAmt:0,total:159,payment:'Cash',notes:'',techNotes:'Heavy lint, replaced cap',photos:[],nextServiceMonths:12},
+  {id:5,customerId:5,customerName:'Maria Lopez',date:dOff(-3),time:'11:00',status:'completed',services:['dvc1'],products:[],surcharge:false,surchargeAmt:0,total:165,payment:'Zelle',notes:'',techNotes:'Routine clean',photos:[],nextServiceMonths:12},
+  {id:6,customerId:3,customerName:'David Okafor',date:dOff(-15),time:'14:00',status:'completed',services:['dvc1','bfc1'],products:['p1'],surcharge:false,surchargeAmt:0,total:355,payment:'Cash',notes:'',techNotes:'Two units serviced',photos:[],nextServiceMonths:12},
+];
+let reminders=[
+  {id:1,customerId:6,dueDate:dOff(0),reason:'Left voicemail \u2014 follow up'},
+  {id:2,customerId:7,dueDate:dOff(12),reason:'Callback \u2014 customer traveling'},
+];
+let nextCustId=9,nextJobId=7,nextReminderId=3,selectedPayment='';
+let currentView='dashboard';
+let activeLoc='nj';
+const STORE={};
+const LOCATIONS={nj:{name:'New Jersey',sub:'Residential · New Jersey'},mw:{name:'Midwest',sub:'Commercial / Healthcare · Midwest'}};
+function snapshotLoc(loc){STORE[loc]={customers:customers,jobs:jobs,reminders:reminders,SERVICES:SERVICES,PRODUCTS:PRODUCTS,LEAD_SOURCES:LEAD_SOURCES,nextCustId:nextCustId,nextJobId:nextJobId,nextReminderId:nextReminderId};}
+function applyLoc(loc){const d=STORE[loc];customers=d.customers;jobs=d.jobs;reminders=d.reminders;SERVICES=d.SERVICES;PRODUCTS=d.PRODUCTS;LEAD_SOURCES=d.LEAD_SOURCES;nextCustId=d.nextCustId;nextJobId=d.nextJobId;nextReminderId=d.nextReminderId;}
+function switchLocation(loc){if(loc===activeLoc){return;}snapshotLoc(activeLoc);activeLoc=loc;applyLoc(loc);updateLocUI();showView(currentView);}
+function updateLocUI(){const m=LOCATIONS[activeLoc];const s=document.getElementById('sidebar-sub');if(s)s.textContent=m.sub;const sel=document.getElementById('loc-select');if(sel)sel.value=activeLoc;}
+function buildMidwest(){
+  const SVC=[
+    {id:'cde',name:'Commercial dryer exhaust cleaning',price:850,cost:320},
+    {id:'rooftop',name:'Rooftop exhaust fan cleaning',price:1200,cost:480},
+    {id:'hcduct',name:'Healthcare duct sanitizing',price:2400,cost:1050},
+    {id:'hood',name:'Kitchen hood & grease duct cleaning',price:1450,cost:600},
+    {id:'coil',name:'HVAC coil cleaning',price:980,cost:380},
+    {id:'inspect',name:'Compliance inspection & report',price:450,cost:120},
+  ];
+  const PRD=[
+    {id:'mp1',name:'Commercial access panel',price:180,cost:70},
+    {id:'mp2',name:'HEPA filter (commercial)',price:140,cost:55},
+    {id:'mp3',name:'Grease containment tray',price:95,cost:38},
+    {id:'mp4',name:'Backdraft damper',price:120,cost:48},
+  ];
+  const LEADS=['Property manager referral','Facilities RFP','Existing contract','Trade show'];
+  const cust=[
+    {id:1,isCompany:true,contactName:'Mercy General Hospital (Facilities)',contactPhone:'(312) 555-0140',firstName:'Daniel',lastName:'Brennan',phone:'(312) 555-0141',phone2:'',email:'d.brennan@mercygen.org',address:'500 W Adams St, Chicago IL 60661',leadSource:'Facilities RFP',serviceRequested:['hcduct'],notes:'Net-30 billing, COI required',lastService:dOff(-150),nextDue:dOff(30),nextServiceMonths:6,jobs:1,snoozeUntil:''},
+    {id:2,isCompany:true,contactName:'Lakeside Senior Living',contactPhone:'(317) 555-0150',firstName:'Renee',lastName:'Coleman',phone:'(317) 555-0151',phone2:'',email:'rcoleman@lakesidesl.com',address:'1820 N Meridian St, Indianapolis IN 46202',leadSource:'Property manager referral',serviceRequested:['cde','coil'],notes:'After-hours access only',lastService:dOff(-200),nextDue:dOff(-4),nextServiceMonths:6,jobs:1,snoozeUntil:''},
+    {id:3,isCompany:true,contactName:'Buckeye Property Group',contactPhone:'(614) 555-0160',firstName:'Marcus',lastName:'Hale',phone:'(614) 555-0161',phone2:'',email:'mhale@buckeyepg.com',address:'250 S High St, Columbus OH 43215',leadSource:'Existing contract',serviceRequested:['cde','hood'],notes:'12-building portfolio',lastService:dOff(-90),nextDue:dOff(10),nextServiceMonths:6,jobs:1,snoozeUntil:''},
+    {id:4,isCompany:true,contactName:'St. Francis Medical Plaza',contactPhone:'(414) 555-0170',firstName:'Olivia',lastName:'Park',phone:'(414) 555-0171',phone2:'',email:'opark@stfrancismp.org',address:'3070 N Wisconsin Ave, Milwaukee WI 53211',leadSource:'Facilities RFP',serviceRequested:['hcduct','inspect'],notes:'Quarterly compliance contract',lastService:dOff(-120),nextDue:dOff(0),nextServiceMonths:6,jobs:1,snoozeUntil:''},
+    {id:5,isCompany:true,contactName:'Great Plains Dining Group',contactPhone:'(816) 555-0180',firstName:'Victor',lastName:'Reyes',phone:'(816) 555-0181',phone2:'',email:'vreyes@gpdining.com',address:'1200 Main St, Kansas City MO 64105',leadSource:'Trade show',serviceRequested:['hood'],notes:'8 restaurant locations',lastService:dOff(-60),nextDue:dOff(120),nextServiceMonths:6,jobs:1,snoozeUntil:''},
+  ];
+  const jb=[
+    {id:1,customerId:1,customerName:'Daniel Brennan',date:dOff(1),time:'07:30',status:'scheduled',services:['hcduct'],products:['mp2'],surcharge:false,surchargeAmt:0,total:0,payment:'',notes:'East wing',techNotes:'',photos:[],nextServiceMonths:6},
+    {id:2,customerId:3,customerName:'Marcus Hale',date:dOff(2),time:'09:00',status:'scheduled',services:['cde'],products:[],surcharge:false,surchargeAmt:0,total:0,payment:'',notes:'Buildings 4-6',techNotes:'',photos:[],nextServiceMonths:6},
+    {id:3,customerId:2,customerName:'Renee Coleman',date:dOff(-10),time:'16:00',status:'completed',services:['cde','coil'],products:['mp2'],surcharge:false,surchargeAmt:0,total:1830,payment:'Invoice',notes:'',techNotes:'After-hours, 3 units',photos:[],nextServiceMonths:6},
+    {id:4,customerId:4,customerName:'Olivia Park',date:dOff(-25),time:'08:00',status:'completed',services:['hcduct','inspect'],products:[],surcharge:false,surchargeAmt:0,total:2850,payment:'Invoice',notes:'',techNotes:'Compliance passed',photos:[],nextServiceMonths:6},
+    {id:5,customerId:5,customerName:'Victor Reyes',date:dOff(-40),time:'13:00',status:'completed',services:['hood'],products:['mp3'],surcharge:false,surchargeAmt:0,total:1545,payment:'Check',notes:'',techNotes:'Quarterly hood service',photos:[],nextServiceMonths:6},
+  ];
+  const rem=[{id:1,customerId:2,dueDate:dOff(0),reason:'Overdue — schedule fall service'}];
+  STORE.mw={customers:cust,jobs:jb,reminders:rem,SERVICES:SVC,PRODUCTS:PRD,LEAD_SOURCES:LEADS,nextCustId:6,nextJobId:6,nextReminderId:2};
+}
+
+function nameOf(c){return ((c.firstName||'')+' '+(c.lastName||'')).trim()||c.contactName||'Customer';}
+function hasScheduledJob(id){return jobs.some(j=>j.customerId===id&&j.status==='scheduled');}
+function hasReminder(id){return reminders.some(r=>r.customerId===id);}
+
+function getDashboardTasks(){
+  const today=dOff(0);const out=[];
+  reminders.forEach(r=>{if(r.dueDate>today)return;const c=customers.find(x=>x.id===r.customerId);if(!c||hasScheduledJob(c.id))return;out.push({kind:'followup',customer:c,date:r.dueDate,reason:r.reason,reminderId:r.id});});
+  customers.forEach(c=>{if(!c.nextDue)return;if(addDays(c.nextDue,-7)>today)return;if(hasScheduledJob(c.id))return;if(c.snoozeUntil&&c.snoozeUntil>today)return;if(hasReminder(c.id))return;out.push({kind:'service',customer:c,date:c.nextDue,reason:'Service due'});});
+  return out.sort((a,b)=>a.date>b.date?1:-1);
+}
+function getUpcoming(){
+  const today=dOff(0),horizon=addDays(today,30);const out=[];
+  reminders.forEach(r=>{if(r.dueDate<=today||r.dueDate>horizon)return;const c=customers.find(x=>x.id===r.customerId);if(!c||hasScheduledJob(c.id))return;out.push({kind:'followup',customer:c,date:r.dueDate,reason:r.reason});});
+  customers.forEach(c=>{if(!c.nextDue)return;const trig=addDays(c.nextDue,-7);if(trig<=today||trig>horizon)return;if(hasScheduledJob(c.id))return;if(hasReminder(c.id))return;out.push({kind:'service',customer:c,date:c.nextDue,reason:'Service due'});});
+  return out.sort((a,b)=>a.date>b.date?1:-1);
+}
+
+function showView(v){currentView=v;
+  const titles={dashboard:'Dashboard',customers:'Customers',jobs:'Jobs',calendar:'Calendar',financials:'Financials',catalog:'Services & Products',settings:'Settings'};
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const nav=document.getElementById('nav-'+v);if(nav)nav.classList.add('active');
+  document.getElementById('page-title').textContent=titles[v]||v;
+  const actions={
+    customers:'<button class="btn btn-primary" onclick="openNewCustomer()"><i class="ti ti-plus"></i> New customer</button>',
+    jobs:'<button class="btn btn-primary" onclick="openScheduleJob()"><i class="ti ti-plus"></i> Schedule job</button>',
+    dashboard:'',calendar:'',settings:''
+  };
+  document.getElementById('topbar-actions').innerHTML=actions[v]||'';
+  const views={dashboard:renderDashboard,customers:renderCustomers,jobs:renderJobs,calendar:renderCalendar,financials:renderFinancials,catalog:renderCatalog,settings:renderSettings};
+  document.getElementById('content').innerHTML=(views[v]||renderDashboard)();
+}
+
+function renderDashboard(){
+  const today=dOff(0);
+  const tasks=getDashboardTasks();
+  const upcoming=getUpcoming();
+  const todayJobs=jobs.filter(j=>j.date===today);
+  const scheduled=jobs.filter(j=>j.status==='scheduled').length;
+  const completedJobs=jobs.filter(j=>j.status==='completed');
+  const gross=completedJobs.reduce((s,j)=>s+(j.total||0),0);
+  const cogs=completedJobs.reduce((s,j)=>s+jobCost(j),0);
+  const profit=gross-cogs;
+  return `
+  <div class="grid3" style="margin-bottom:16px">
+    <div class="metric"><div class="metric-label">Customers to call</div><div class="metric-val" style="color:${tasks.length?'#BA7517':'inherit'}">${tasks.length}</div></div>
+    <div class="metric"><div class="metric-label">Scheduled jobs</div><div class="metric-val">${scheduled}</div></div>
+    <div class="metric"><div class="metric-label">Jobs today</div><div class="metric-val">${todayJobs.length}</div></div>
+  </div>
+  <div class="grid3" style="margin-bottom:16px">
+    <div class="metric"><div class="metric-label">Gross revenue (all time)</div><div class="metric-val">$${gross.toLocaleString()}</div></div>
+    <div class="metric"><div class="metric-label">Cost of goods</div><div class="metric-val" style="color:#A32D2D">$${cogs.toLocaleString()}</div></div>
+    <div class="metric"><div class="metric-label">Profit</div><div class="metric-val" style="color:#1D9E75">$${profit.toLocaleString()}</div></div>
+  </div>
+  <div class="card">
+    <div class="section-title"><i class="ti ti-phone-call"></i> Tasks for today \u2014 calls to make</div>
+    <p style="font-size:12px;color:var(--color-text-secondary);margin:-4px 0 8px">Customers due for service (reminder fires one week before) plus any follow-ups you set. Click a row for the full profile and history.</p>
+    ${tasks.length?tasks.map(taskRow).join(''):'<div class="empty"><i class="ti ti-circle-check"></i>No calls needed today \u2014 you\u2019re all caught up.</div>'}
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="section-title flush" style="margin-bottom:12px"><i class="ti ti-calendar-event"></i> Today\u2019s jobs</div>
+      ${todayJobs.length?todayJobs.map(j=>`<div class="row-link" onclick="openJob(${j.id})" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)"><div><div style="font-weight:500;font-size:13px">${j.customerName}</div><div style="font-size:12px;color:var(--color-text-secondary)">${j.time} \u00b7 ${SERVICES.find(s=>s.id===j.services[0])?.name||''}</div></div><span class="badge ${j.status==='completed'?'badge-green':'badge-blue'}">${j.status}</span></div>`).join(''):'<p style="font-size:13px;color:var(--color-text-secondary)">No jobs scheduled today</p>'}
+    </div>
+    <div class="card">
+      <div class="section-title flush" style="margin-bottom:12px"><i class="ti ti-clock"></i> Coming up (next 30 days)</div>
+      ${upcoming.length?upcoming.map(t=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)"><div style="font-size:13px;font-weight:500">${nameOf(t.customer)}</div><div style="font-size:12px;color:var(--color-text-secondary)">${t.kind==='service'?'Due':'Callback'} ${fmtDate(t.date)}</div></div>`).join(''):'<p style="font-size:13px;color:var(--color-text-secondary)">Nothing coming up in the next 30 days</p>'}
+    </div>
+  </div>`;
+}
+
+function taskRow(t){
+  const c=t.customer,today=dOff(0);
+  let badge,badgeClass;
+  if(t.kind==='service'){
+    const days=Math.round((new Date(today)-new Date(c.nextDue))/86400000);
+    if(c.nextDue<today){badge='Overdue '+days+'d';badgeClass='badge-red';}
+    else if(c.nextDue===today){badge='Due today';badgeClass='badge-amber';}
+    else{badge='Due in '+Math.abs(days)+'d';badgeClass='badge-amber';}
+  } else {badge=t.reason;badgeClass='badge-blue';}
+  const phoneDigits=c.phone.replace(/[^0-9]/g,'');
+  const sub=t.kind==='service'?`${c.phone} \u00b7 Last cleaned ${fmtDate(c.lastService)}`:`${c.phone} \u00b7 ${t.reason}`;
+  return `<div class="task-row"><div class="avatar" onclick="openCustomer(${c.id})" style="cursor:pointer">${initials(c)}</div><div style="flex:1;min-width:0;cursor:pointer" onclick="openCustomer(${c.id})"><div style="font-weight:500;font-size:14px">Call ${nameOf(c)}${c.isCompany&&c.contactName?' \u00b7 '+c.contactName:''}</div><div style="font-size:12px;color:var(--color-text-secondary)">${sub}</div></div><span class="badge ${badgeClass}">${badge}</span><div style="display:flex;gap:6px;flex-shrink:0"><a class="btn btn-sm" href="tel:${phoneDigits}"><i class="ti ti-phone"></i> Call</a><button class="btn btn-sm btn-primary" onclick="openScheduleJobForCustomer(${c.id})"><i class="ti ti-calendar-plus"></i> Book</button><button class="btn btn-sm" onclick="openLogOutcome(${c.id},${t.reminderId||'null'})"><i class="ti ti-dots"></i> Log</button></div></div>`;
+}
+
+function openLogOutcome(custId,reminderId){
+  const c=customers.find(x=>x.id===custId);if(!c)return;
+  showModal(`<div class="modal-header"><h3 style="font-size:15px;font-weight:500">Log call \u2014 ${nameOf(c)}</h3><button class="btn" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:16px">What happened on this call?</p>
+    <div class="service-item" style="cursor:pointer;padding:12px 14px" onclick="logNoAnswer(${custId},${reminderId||'null'})"><i class="ti ti-phone-x" style="font-size:18px;color:#854F0B"></i><div><div style="font-weight:500;color:var(--color-text-primary)">No answer / left voicemail</div><div style="font-size:12px;color:var(--color-text-secondary)">Sets a follow-up reminder for one week from today</div></div></div>
+    <div class="service-item" style="cursor:pointer;padding:12px 14px;align-items:flex-start" onclick="document.getElementById('cb-wrap').style.display='block'"><i class="ti ti-calendar-clock" style="font-size:18px;color:#185FA5;margin-top:2px"></i><div style="flex:1"><div style="font-weight:500;color:var(--color-text-primary)">Call back later</div><div style="font-size:12px;color:var(--color-text-secondary)">Customer asked you to reach out on a specific date</div><div id="cb-wrap" style="display:none;margin-top:10px"><input type="date" id="cb-date" value="${addDays(dOff(0),180)}" style="margin-bottom:8px"><button class="btn btn-sm btn-primary" onclick="logCallback(${custId},${reminderId||'null'})">Set callback reminder</button></div></div></div>
+    <div class="service-item" style="cursor:pointer;padding:12px 14px" onclick="closeModal();openScheduleJobForCustomer(${custId})"><i class="ti ti-calendar-check" style="font-size:18px;color:#1D9E75"></i><div><div style="font-weight:500;color:var(--color-text-primary)">Ready to schedule</div><div style="font-size:12px;color:var(--color-text-secondary)">Book the job now</div></div></div>
+    <div style="margin-top:6px;text-align:center"><button class="btn btn-sm" onclick="logDismiss(${custId},${reminderId||'null'})" style="color:var(--color-text-secondary)">Dismiss for now</button></div>
+  </div>`);
+}
+function upsertReminder(custId,dueDate,reason,reminderId){
+  if(reminderId){const r=reminders.find(x=>x.id===reminderId);if(r){r.dueDate=dueDate;r.reason=reason;return;}}
+  const existing=reminders.find(x=>x.customerId===custId);
+  if(existing){existing.dueDate=dueDate;existing.reason=reason;}
+  else reminders.push({id:nextReminderId++,customerId:custId,dueDate,reason});
+}
+function logNoAnswer(custId,reminderId){upsertReminder(custId,addDays(dOff(0),7),'Left voicemail \u2014 follow up',reminderId);const c=customers.find(x=>x.id===custId);if(c)c.snoozeUntil='';closeModal();toast('Follow-up set for '+fmtDate(addDays(dOff(0),7)));showView('dashboard');}
+function logCallback(custId,reminderId){const d=document.getElementById('cb-date').value;if(!d)return toast('Pick a date');upsertReminder(custId,d,'Callback \u2014 customer requested',reminderId);const c=customers.find(x=>x.id===custId);if(c)c.snoozeUntil='';closeModal();toast('Callback reminder set for '+fmtDate(d));showView('dashboard');}
+function logDismiss(custId,reminderId){if(reminderId){reminders=reminders.filter(r=>r.id!==reminderId);}else{const c=customers.find(x=>x.id===custId);if(c)c.snoozeUntil=addDays(dOff(0),30);}closeModal();toast('Dismissed');showView('dashboard');}
+
+function renderCustomers(){
+  return `
+  <div class="card" style="margin-bottom:12px;padding:12px 16px"><div style="position:relative"><i class="ti ti-search" style="position:absolute;left:10px;top:9px;color:var(--color-text-tertiary)"></i><input type="text" id="cust-search" placeholder="Search by name or phone..." oninput="filterCustomerRows(this.value)" style="padding-left:32px"></div></div>
+  <div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Name</th><th>Account</th><th>Phone</th><th>Address</th><th>Next due</th><th>Lead source</th><th></th></tr></thead><tbody id="cust-tbody">${customers.map(custRow).join('')}</tbody></table></div>`;
+}
+function custRow(c){
+  const today=dOff(0);
+  const s=(nameOf(c)+' '+c.phone+' '+(c.contactName||'')).toLowerCase();
+  return `<tr class="row-link" data-s="${s}" onclick="openCustomer(${c.id})"><td><div style="display:flex;align-items:center;gap:10px"><div class="avatar sm">${initials(c)}</div><div><div style="font-weight:500">${nameOf(c)}</div><div style="font-size:11px;color:var(--color-text-secondary)">${c.email}</div></div></div></td><td>${c.isCompany?'<span class="badge badge-gray">'+(c.contactName||'Company/Landlord')+'</span>':'<span style="font-size:12px;color:var(--color-text-tertiary)">Individual</span>'}</td><td style="font-size:12px">${c.phone}</td><td style="font-size:12px;color:var(--color-text-secondary);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.address}</td><td style="font-size:12px">${c.nextDue?`<span style="color:${c.nextDue<today?'#A32D2D':'inherit'}">${fmtDate(c.nextDue)}</span>`:'\u2014'}</td><td><span class="badge badge-gray">${c.leadSource||'\u2014'}</span></td><td><button class="btn btn-sm" onclick="event.stopPropagation();openScheduleJobForCustomer(${c.id})"><i class="ti ti-calendar-plus"></i> Book</button></td></tr>`;
+}
+function filterCustomerRows(v){const q=v.toLowerCase();document.querySelectorAll('#cust-tbody tr').forEach(tr=>{tr.style.display=tr.getAttribute('data-s').includes(q)?'':'none';});}
+
+function renderJobs(){
+  const sorted=[...jobs].sort((a,b)=>a.date>b.date?-1:1);
+  return `<div class="card" style="padding:0;overflow:hidden"><table><thead><tr><th>Customer</th><th>Date</th><th>Services</th><th>Status</th><th>Total</th><th></th></tr></thead><tbody>${sorted.map(j=>`<tr class="row-link" onclick="openJob(${j.id})"><td style="font-weight:500">${j.customerName}</td><td style="font-size:12px">${fmtDate(j.date)} ${j.time}</td><td style="font-size:12px;color:var(--color-text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.services.map(s=>SERVICES.find(x=>x.id===s)?.name||s).join(', ')}</td><td><span class="badge ${statusBadge(j.status)}">${j.status}</span></td><td style="font-size:13px">${j.total?'$'+j.total:'\u2014'}</td><td>${j.status==='scheduled'?`<button class="btn btn-sm btn-success" onclick="event.stopPropagation();openCompleteJob(${j.id})"><i class="ti ti-check"></i> Complete</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+let calMode='month';
+let calDate=dOff(0);
+function renderCalendar(){return calMode==='day'?renderDaySchedule():calMode==='week'?renderWeek():renderMonth();}
+function setCalMode(m){calMode=m;document.getElementById('content').innerHTML=renderCalendar();}
+function openCalDay(key){calDate=key;calMode='day';document.getElementById('content').innerHTML=renderCalendar();}
+function calNavDay(delta){calDate=addDays(calDate,delta);document.getElementById('content').innerHTML=renderCalendar();}
+function calNavWeek(delta){calDate=addDays(calDate,7*delta);document.getElementById('content').innerHTML=renderCalendar();}
+function calNavMonth(delta){const p=calDate.split('-');const d=new Date(+p[0],+p[1]-1+delta,1);calDate=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;document.getElementById('content').innerHTML=renderCalendar();}
+function calToday(){calDate=dOff(0);document.getElementById('content').innerHTML=renderCalendar();}
+function calToggle(active){const m=[['month','Month'],['week','Week'],['day','Day']];return m.map(x=>`<button class="btn btn-sm ${active===x[0]?'btn-primary':''}" onclick="setCalMode('${x[0]}')">${x[1]}</button>`).join('');}
+function weekStartKey(key){const p=key.split('-');const d=new Date(+p[0],+p[1]-1,+p[2]);d.setDate(d.getDate()-d.getDay());return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function renderMonth(){
+  const p=calDate.split('-');const year=+p[0],month=+p[1]-1;const todayKey=dOff(0);
+  const monthName=['January','February','March','April','May','June','July','August','September','October','November','December'][month];
+  const firstDay=new Date(year,month,1).getDay();const daysInMonth=new Date(year,month+1,0).getDate();
+  const prefix=`${year}-${String(month+1).padStart(2,'0')}-`;
+  const jobDates={};jobs.forEach(j=>{if(j.date.startsWith(prefix)){const d=parseInt(j.date.slice(8,10));jobDates[d]=(jobDates[d]||0)+1;}});
+  let cells='';['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d=>{cells+='<div class="cal-day header">'+d+'</div>';});
+  for(let i=0;i<firstDay;i++)cells+='<div class="cal-day"></div>';
+  for(let d=1;d<=daysInMonth;d++){const key=prefix+String(d).padStart(2,'0');const hasJob=jobDates[d];cells+=`<div class="cal-day${hasJob?' has-job':''}${key===todayKey?' today':''}" onclick="openCalDay('${key}')">${d}${hasJob?`<div style="font-size:9px;margin-top:1px">${hasJob} job${hasJob>1?'s':''}</div>`:''}</div>`;}
+  return `<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:6px"><button class="btn btn-sm" onclick="calNavMonth(-1)"><i class="ti ti-chevron-left"></i></button><h3 style="font-size:15px;font-weight:500;min-width:130px;text-align:center">${monthName} ${year}</h3><button class="btn btn-sm" onclick="calNavMonth(1)"><i class="ti ti-chevron-right"></i></button><button class="btn btn-sm" onclick="calToday()">Today</button></div><div style="display:flex;gap:6px">${calToggle('month')}</div></div><div class="cal-grid">${cells}</div><p style="font-size:12px;color:var(--color-text-secondary);margin-top:12px;text-align:center">Tap any day to open its daily schedule.</p></div>`;
+}
+function layoutDay(dayJobs){
+  const evs=dayJobs.map(j=>{const p=j.time.split(':');const start=(+p[0])*60+(+(p[1]||0));return{job:j,start,end:start+120};}).sort((a,b)=>a.start-b.start||a.end-b.end);
+  let i=0;
+  while(i<evs.length){let clusterEnd=evs[i].end;let k=i+1;while(k<evs.length&&evs[k].start<clusterEnd){clusterEnd=Math.max(clusterEnd,evs[k].end);k++;}const cluster=evs.slice(i,k);const cols=[];cluster.forEach(e=>{let placed=false;for(let c=0;c<cols.length;c++){if(cols[c]<=e.start){e.col=c;cols[c]=e.end;placed=true;break;}}if(!placed){e.col=cols.length;cols.push(e.end);}});cluster.forEach(e=>e.cols=cols.length);i=k;}
+  return evs;
+}
+function renderDaySchedule(){
+  const key=calDate;const dayJobs=jobs.filter(j=>j.date===key);
+  const H0=7,H1=20,HH=58,GUT=54;
+  const evs=layoutDay(dayJobs);
+  let grid='';
+  for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?' AM':' PM');grid+=`<div style="position:absolute;top:${top}px;left:0;right:0;height:0;border-top:0.5px solid var(--color-border-tertiary)"></div><div style="position:absolute;top:${top-6}px;left:0;width:${GUT-8}px;text-align:right;font-size:10px;color:var(--color-text-tertiary)">${label}</div>`;}
+  let blocks='';
+  evs.forEach(e=>{const j=e.job;const c=customers.find(x=>x.id===j.customerId)||{};const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(120/60)*HH-4;const leftCalc=`calc(${GUT}px + (100% - ${GUT}px) * ${e.col/e.cols})`;const widthCalc=`calc((100% - ${GUT}px) * ${1/e.cols} - 6px)`;const color=j.status==='completed'?'#1D9E75':'#185FA5';const bg=j.status==='completed'?'#EAF3DE':'#E6F1FB';blocks+=`<div onclick="openJob(${j.id})" style="position:absolute;top:${top}px;left:${leftCalc};width:${widthCalc};height:${height}px;background:${bg};border-left:3px solid ${color};border-radius:6px;padding:5px 8px;overflow:hidden;cursor:pointer;box-sizing:border-box"><div style="font-size:11px;font-weight:600;color:${color}">${j.time} \u00b7 ${j.status}</div><div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.customerName}</div><div style="font-size:11px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><i class="ti ti-map-pin" style="font-size:11px"></i> ${c.address||'No address'}</div><div style="font-size:11px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.services.map(s=>svcName(s)).join(', ')}</div></div>`;});
+  const totalH=(H1-H0)*HH+10;
+  const dp=key.split('-');const dObj=new Date(+dp[0],+dp[1]-1,+dp[2]);const dayName=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dObj.getDay()];
+  const isToday=key===dOff(0);
+  return `<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-sm" onclick="calNavDay(-1)"><i class="ti ti-chevron-left"></i></button><h3 style="font-size:15px;font-weight:500">${dayName}, ${fmtDate(key)}${isToday?' \u00b7 Today':''}</h3><button class="btn btn-sm" onclick="calNavDay(1)"><i class="ti ti-chevron-right"></i></button></div><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="calToday()">Today</button>${calToggle('day')}</div></div><div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px">${dayJobs.length} job${dayJobs.length!==1?'s':''} \u00b7 2-hour slots \u00b7 tap a job for full details</div><div style="position:relative;height:${totalH}px;margin-top:4px">${grid}${blocks}</div></div>`;
+}
+function renderWeek(){
+  const start=weekStartKey(calDate);
+  const days=[];for(let i=0;i<7;i++)days.push(addDays(start,i));
+  const H0=7,H1=20,HH=46,GUT=42,COLW=118;
+  const totalW=GUT+7*COLW;const totalH=(H1-H0)*HH+10;
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const todayKey=dOff(0);
+  let header=`<div style="display:flex;width:${totalW}px"><div style="width:${GUT}px;flex-shrink:0"></div>`+days.map((k,i)=>{const dp=k.split('-');const isT=k===todayKey;return `<div onclick="openCalDay('${k}')" style="width:${COLW}px;flex-shrink:0;text-align:center;cursor:pointer;padding:4px 0;border-radius:6px;${isT?'background:var(--color-background-secondary);font-weight:600':''}"><div style="font-size:11px;color:var(--color-text-secondary)">${dayNames[i]}</div><div style="font-size:14px">${parseInt(dp[2])}</div></div>`;}).join('')+`</div>`;
+  let grid='';
+  for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?'a':'p');grid+=`<div style="position:absolute;top:${top}px;left:0;width:${totalW}px;border-top:0.5px solid var(--color-border-tertiary)"></div><div style="position:absolute;top:${top-6}px;left:0;width:${GUT-6}px;text-align:right;font-size:9px;color:var(--color-text-tertiary)">${label}</div>`;}
+  let seps='';for(let i=0;i<7;i++){const left=GUT+i*COLW;seps+=`<div style="position:absolute;top:0;bottom:0;left:${left}px;border-left:0.5px solid var(--color-border-tertiary)"></div>`;}
+  let blocks='';
+  days.forEach((k,di)=>{const dj=jobs.filter(j=>j.date===k);const evs=layoutDay(dj);evs.forEach(e=>{const j=e.job;const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(120/60)*HH-3;const cw=COLW/e.cols;const left=GUT+di*COLW+e.col*cw+1;const w=cw-3;const color=j.status==='completed'?'#1D9E75':'#185FA5';const bg=j.status==='completed'?'#EAF3DE':'#E6F1FB';blocks+=`<div onclick="openJob(${j.id})" style="position:absolute;top:${top}px;left:${left}px;width:${w}px;height:${height}px;background:${bg};border-left:3px solid ${color};border-radius:5px;padding:3px 5px;overflow:hidden;cursor:pointer;box-sizing:border-box"><div style="font-size:10px;font-weight:600;color:${color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.time}</div><div style="font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.customerName}</div></div>`;});});
+  return `<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:6px"><button class="btn btn-sm" onclick="calNavWeek(-1)"><i class="ti ti-chevron-left"></i></button><h3 style="font-size:14px;font-weight:500">${fmtDate(start)} \u2013 ${fmtDate(addDays(start,6))}</h3><button class="btn btn-sm" onclick="calNavWeek(1)"><i class="ti ti-chevron-right"></i></button><button class="btn btn-sm" onclick="calToday()">Today</button></div><div style="display:flex;gap:6px">${calToggle('week')}</div></div><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="min-width:${totalW}px">${header}<div style="position:relative;height:${totalH}px;margin-top:2px">${grid}${seps}${blocks}</div></div></div><p style="font-size:11px;color:var(--color-text-secondary);margin-top:8px;text-align:center">Tap a day to open its full schedule \u00b7 scroll sideways for the whole week.</p></div>`;
+}
+
+let finPeriod='month';
+function setFinPeriod(p){finPeriod=p;document.getElementById('content').innerHTML=renderFinancials();}
+function weekKey(ds){const d=new Date(ds);const oneJan=new Date(d.getFullYear(),0,1);const days=Math.floor((d-oneJan)/86400000);const wk=Math.ceil((days+oneJan.getDay()+1)/7);return d.getFullYear()+'-W'+String(wk).padStart(2,'0');}
+function periodKey(ds,p){const d=new Date(ds);if(p==='week')return weekKey(ds);if(p==='month')return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');if(p==='year')return ''+d.getFullYear();return 'all';}
+function periodLabel(key,p){if(p==='all')return 'All time';if(p==='year')return key;if(p==='month'){const a=key.split('-');const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mo[parseInt(a[1])-1]+' '+a[0];}if(p==='week'){const a=key.split('-W');return 'Week '+a[1]+', '+a[0];}return key;}
+function renderFinancials(){
+  const completed=jobs.filter(j=>j.status==='completed');
+  const groups={};
+  completed.forEach(j=>{const k=periodKey(j.date,finPeriod);(groups[k]=groups[k]||[]).push(j);});
+  const keys=Object.keys(groups).sort().reverse();
+  const tabs=[['week','Week'],['month','Month'],['year','Year'],['all','All time']];
+  let html=`<div class="card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--color-text-secondary);margin-right:4px">Break down by:</span>${tabs.map(t=>`<button class="btn btn-sm ${finPeriod===t[0]?'btn-primary':''}" onclick="setFinPeriod('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
+  if(!keys.length){html+='<div class="card"><div class="empty"><i class="ti ti-chart-bar"></i>No completed jobs yet \u2014 your numbers will appear here as you complete jobs.</div></div>';return html;}
+  keys.forEach(k=>{
+    const arr=groups[k];
+    const gross=arr.reduce((s,j)=>s+(j.total||0),0);
+    const cost=arr.reduce((s,j)=>s+jobCost(j),0);
+    const profit=gross-cost;
+    const margin=gross?Math.round(profit/gross*100):0;
+    html+=`<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-weight:600;font-size:15px">${periodLabel(k,finPeriod)}</div><div style="font-size:12px;color:var(--color-text-secondary)">${arr.length} job${arr.length!==1?'s':''} \u00b7 ${margin}% margin</div></div><div class="grid3"><div class="metric"><div class="metric-label">Gross revenue</div><div class="metric-val">$${gross.toLocaleString()}</div></div><div class="metric"><div class="metric-label">Cost of goods</div><div class="metric-val" style="color:#A32D2D">$${cost.toLocaleString()}</div></div><div class="metric"><div class="metric-label">Profit</div><div class="metric-val" style="color:#1D9E75">$${profit.toLocaleString()}</div></div></div></div>`;
+  });
+  return html;
+}
+function renderCatalog(){
+  return `
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="section-title flush"><i class="ti ti-tools"></i> Services</div><button class="btn btn-sm" onclick="addCatalogItem('service')"><i class="ti ti-plus"></i> Add service</button></div>
+    <p style="font-size:12px;color:var(--color-text-secondary);margin:6px 0 12px">Set what you charge and what each one costs you. Margin updates automatically and feeds the dashboard profit.</p>
+    <table><thead><tr><th>Service</th><th style="width:120px">Price (charge)</th><th style="width:120px">Cost to me</th><th style="width:80px">Margin</th><th style="width:36px"></th></tr></thead><tbody>${SERVICES.map(s=>catalogRow('service',s)).join('')}</tbody></table>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div class="section-title flush"><i class="ti ti-package"></i> Products</div><button class="btn btn-sm" onclick="addCatalogItem('product')"><i class="ti ti-plus"></i> Add product</button></div>
+    <table><thead><tr><th>Product</th><th style="width:120px">Price (charge)</th><th style="width:120px">Cost to me</th><th style="width:80px">Margin</th><th style="width:36px"></th></tr></thead><tbody>${PRODUCTS.map(p=>catalogRow('product',p)).join('')}</tbody></table>
+  </div>`;
+}
+function catalogRow(type,it){const margin=(it.price||0)-(it.cost||0);const nm=(it.name||'').replace(/"/g,'&quot;');return `<tr><td><input type="text" value="${nm}" onchange="updateCatalog('${type}','${it.id}','name',this.value)" style="font-weight:500"></td><td><input type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)"></td><td><input type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)"></td><td style="font-size:13px;font-weight:500;color:${margin>=0?'#3B6D11':'#A32D2D'}">$${margin}</td><td style="text-align:center"><i class="ti ti-trash" style="cursor:pointer;color:var(--color-text-tertiary)" onclick="deleteCatalog('${type}','${it.id}')"></i></td></tr>`;}
+function updateCatalog(type,id,field,val){const arr=type==='service'?SERVICES:PRODUCTS;const it=arr.find(x=>x.id===id);if(it){it[field]=val;showView('catalog');}}
+function deleteCatalog(type,id){if(type==='service')SERVICES=SERVICES.filter(x=>x.id!==id);else PRODUCTS=PRODUCTS.filter(x=>x.id!==id);showView('catalog');toast('Removed');}
+function addCatalogItem(type){const arr=type==='service'?SERVICES:PRODUCTS;const id=(type==='service'?'svc':'prd')+Date.now();arr.push({id,name:type==='service'?'New service':'New product',price:0,cost:0});showView('catalog');toast('Added \u2014 edit the details');}
+function renderSettings(){
+  return `<div class="grid2"><div class="card"><div class="section-title">Business info</div><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md)"><img src="${LOGO_SRC}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;background:#fff"><div><div style="font-weight:500;font-size:14px">Klean Ventz</div><div style="font-size:12px;color:var(--color-text-secondary)">Dryer Vent Cleaning & Installation LLC</div></div></div><div class="form-group"><label>Business name</label><input type="text" value="Klean Ventz Dryer Vent Cleaning & Installation LLC"></div><div class="form-group"><label>Phone</label><input type="text" value="732-808-3637"></div><div class="form-group"><label>Website</label><input type="text" value="kleanventz.com"></div><div class="form-group"><label>Email</label><input type="email" placeholder="your@email.com"></div><div class="form-group"><label>Google review link</label><input type="url" value="https://g.page/r/CdVVCz82yKK2EAE/review"></div><button class="btn btn-primary" onclick="toast('Settings saved')">Save changes</button></div><div class="card"><div class="section-title">Automated emails</div><p style="font-size:12px;color:var(--color-text-secondary);margin-bottom:12px">Only these three send automatically. Everything else is manual.</p><div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:6px;font-size:13px"><i class="ti ti-calendar-check" style="color:#1D9E75"></i> Appointment confirmation (on booking)</div><div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:6px;font-size:13px"><i class="ti ti-file-invoice" style="color:#1D9E75"></i> Receipt or invoice (on job complete)</div><div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);font-size:13px"><i class="ti ti-star" style="color:#1D9E75"></i> Google review request (on job complete)</div><div class="section-title" style="margin-top:20px">Service reminders</div><p style="font-size:12px;color:var(--color-text-secondary)">Handled internally \u2014 a reminder appears on your dashboard one week before each customer is due, tied to their profile. Follow-ups (voicemails, callbacks) are set by you and appear the same way. No reminder emails go to customers.</p><div class="section-title" style="margin-top:20px">Lead sources</div><div id="lead-source-list" style="margin-bottom:10px">${LEAD_SOURCES.map(s=>leadRow(s)).join('')}</div><div style="display:flex;gap:8px"><input type="text" id="new-lead-source" placeholder="e.g. Google, Nextdoor..." style="flex:1"><button class="btn" onclick="addLeadSource()"><i class="ti ti-plus"></i> Add</button></div></div></div>`;
+}
+function leadRow(s){return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:6px;font-size:13px"><span>${s}</span><i class="ti ti-x" style="font-size:14px;cursor:pointer;color:var(--color-text-secondary)" onclick="removeLeadSource('${s}')"></i></div>`;}
+function addLeadSource(){const inp=document.getElementById('new-lead-source');const val=inp.value.trim();if(!val)return;if(!LEAD_SOURCES.includes(val))LEAD_SOURCES.push(val);inp.value='';refreshLeadSourceList();toast('Lead source added');}
+function removeLeadSource(s){LEAD_SOURCES=LEAD_SOURCES.filter(x=>x!==s);refreshLeadSourceList();}
+function refreshLeadSourceList(){const list=document.getElementById('lead-source-list');if(list)list.innerHTML=LEAD_SOURCES.map(s=>leadRow(s)).join('');}
+
+function openNewCustomer(){
+  const leadOpts=LEAD_SOURCES.map(s=>'<option>'+s+'</option>').join('');
+  showModal(`<div class="modal-header"><h3 style="font-size:15px;font-weight:500">New customer</h3><button class="btn" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <div class="section-title">Account type</div>
+    <div class="service-item" style="margin-bottom:14px"><input type="checkbox" id="nc-iscompany"><label for="nc-iscompany" style="font-size:13px;color:var(--color-text-primary);cursor:pointer;margin:0">This is a company / landlord account</label></div>
+    <div class="form-group"><label>Company / landlord contact name</label><input type="text" id="nc-contact" placeholder="e.g. Okafor Properties (David)"></div>
+    <div class="form-group"><label>Contact phone (for billing)</label><input type="tel" id="nc-contactphone" placeholder="(732) 555-0000"></div>
+    <div class="section-title" style="margin-top:8px">Customer</div>
+    <div class="form-row"><div class="form-group" style="margin-bottom:0"><label>First name</label><input type="text" id="nc-first" placeholder="Jane"></div><div class="form-group" style="margin-bottom:0"><label>Last name</label><input type="text" id="nc-last" placeholder="Smith"></div></div>
+    <div class="form-row" style="margin-top:12px"><div class="form-group" style="margin-bottom:0"><label>Phone number</label><input type="tel" id="nc-phone" placeholder="(732) 555-0000"></div><div class="form-group" style="margin-bottom:0"><label>Second phone <span class="optional-tag">optional</span></label><input type="tel" id="nc-phone2" placeholder="(732) 555-0001"></div></div>
+    <div class="form-group" style="margin-top:12px"><label>Email</label><input type="email" id="nc-email" placeholder="jane@email.com"></div>
+    <div class="form-group addr-wrap"><label>Address <span style="font-size:10px;color:var(--color-text-tertiary);font-weight:400">(populates from Google Maps)</span></label><input type="text" id="nc-addr" placeholder="123 Main St, City, NJ" autocomplete="off" oninput="addrInput(this.value)" onblur="setTimeout(hideAddrSug,200)"><div id="addr-suggestions" class="addr-suggestions" style="display:none"></div></div>
+    <div class="form-group"><label>Lead source (how did you hear about us?)</label><select id="nc-lead"><option value="">\u2014 select \u2014</option>${leadOpts}<option value="other">Other (specify below)</option></select></div>
+    <div class="form-group" id="lead-other-wrap" style="display:none"><label>Please specify</label><input type="text" id="nc-lead-other" placeholder="How did they find you?"></div>
+    <div class="section-title">Service requested</div>
+    ${SERVICES.map(s=>`<div class="service-item"><input type="checkbox" id="ncs-${s.id}"><label for="ncs-${s.id}" style="font-size:13px;color:var(--color-text-primary);cursor:pointer;margin:0">${s.name}</label></div>`).join('')}
+    <div class="section-title" style="margin-top:12px">Notes</div>
+    <div class="form-group"><textarea id="nc-notes" placeholder="Gate code, dog in yard, access instructions..."></textarea></div>
+  </div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewCustomer()"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
+  document.getElementById('nc-lead').addEventListener('change',function(){document.getElementById('lead-other-wrap').style.display=this.value==='other'?'block':'none';});
+}
+function addrInput(val){const box=document.getElementById('addr-suggestions');if(!box)return;if(val.length<3){box.style.display='none';return;}const filtered=FAKE_ADDRESSES.filter(a=>a.main.toLowerCase().includes(val.toLowerCase())||a.sub.toLowerCase().includes(val.toLowerCase()));if(!filtered.length){box.style.display='none';return;}box.style.display='block';box.innerHTML=filtered.map(a=>`<div class="addr-suggestion" onmousedown="selectAddr('${a.main}, ${a.sub}')"><div class="main-text">${a.main}</div><div class="sub-text">${a.sub}</div></div>`).join('');}
+function selectAddr(val){const inp=document.getElementById('nc-addr');if(inp)inp.value=val;hideAddrSug();}
+function hideAddrSug(){const box=document.getElementById('addr-suggestions');if(box)box.style.display='none';}
+function saveNewCustomer(){
+  const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
+  const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
+  if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
+  const leadVal=document.getElementById('nc-lead').value;const leadSource=leadVal==='other'?(document.getElementById('nc-lead-other').value.trim()||'Other'):leadVal;
+  const serviceRequested=SERVICES.filter(s=>document.getElementById('ncs-'+s.id)?.checked).map(s=>s.id);
+  customers.push({id:nextCustId++,isCompany,contactName,contactPhone:document.getElementById('nc-contactphone').value,firstName,lastName,phone:document.getElementById('nc-phone').value,phone2:document.getElementById('nc-phone2').value,email:document.getElementById('nc-email').value,address:document.getElementById('nc-addr').value,leadSource,serviceRequested,notes:document.getElementById('nc-notes').value,lastService:'',nextDue:'',nextServiceMonths:12,jobs:0,snoozeUntil:''});
+  closeModal();toast('Customer saved');showView('customers');
+}
+
+function openCustomer(id){
+  const c=customers.find(x=>x.id===id);if(!c)return;
+  const cJobs=jobs.filter(j=>j.customerId===id);const phoneDigits=c.phone.replace(/[^0-9]/g,'');
+  const openRem=reminders.find(r=>r.customerId===id);
+  showModal(`<div class="modal-header"><div style="display:flex;align-items:center;gap:10px"><div class="avatar">${initials(c)}</div><div><h3 style="font-size:15px;font-weight:500">${nameOf(c)}</h3>${c.isCompany?`<p style="font-size:12px;color:var(--color-text-secondary)">${c.contactName||'Company / landlord'}</p>`:''}</div></div><button class="btn" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body">
+    <div style="display:flex;gap:8px;margin-bottom:16px"><a class="btn btn-primary" href="tel:${phoneDigits}" style="flex:1;justify-content:center"><i class="ti ti-phone"></i> Call ${c.phone}</a><button class="btn" onclick="closeModal();openLogOutcome(${c.id},${openRem?openRem.id:'null'})"><i class="ti ti-notes"></i> Log call</button></div>
+    ${openRem?`<div style="background:#E6F1FB;border:0.5px solid #B5D4F4;border-radius:var(--border-radius-md);padding:8px 12px;margin-bottom:14px;font-size:12px;color:#185FA5"><i class="ti ti-bell"></i> Reminder set: ${openRem.reason} \u2014 ${fmtDate(openRem.dueDate)}</div>`:''}
+    <div class="grid3" style="margin-bottom:16px"><div class="metric"><div class="metric-label">Total jobs</div><div class="metric-val">${c.jobs}</div></div><div class="metric"><div class="metric-label">Next service due</div><div class="metric-val" style="font-size:14px">${c.nextDue?fmtDate(c.nextDue):'\u2014'}</div></div><div class="metric"><div class="metric-label">Lead source</div><div class="metric-val" style="font-size:14px">${c.leadSource||'\u2014'}</div></div></div>
+    ${c.isCompany?`<div class="section-title">Company / landlord</div><div class="form-row"><div class="form-group" style="margin-bottom:0"><label>Contact name</label><input type="text" value="${c.contactName||''}" onchange="updateCust(${c.id},'contactName',this.value)"></div><div class="form-group" style="margin-bottom:0"><label>Contact phone</label><input type="tel" value="${c.contactPhone||''}" onchange="updateCust(${c.id},'contactPhone',this.value)"></div></div>`:''}
+    <div class="section-title" ${c.isCompany?'style="margin-top:16px"':''}>Customer</div>
+    <div class="form-row"><div class="form-group" style="margin-bottom:0"><label>First name</label><input type="text" value="${c.firstName}" onchange="updateCust(${c.id},'firstName',this.value)"></div><div class="form-group" style="margin-bottom:0"><label>Last name</label><input type="text" value="${c.lastName}" onchange="updateCust(${c.id},'lastName',this.value)"></div></div>
+    <div class="form-row" style="margin-top:12px"><div class="form-group" style="margin-bottom:0"><label>Phone</label><input type="tel" value="${c.phone}" onchange="updateCust(${c.id},'phone',this.value)"></div><div class="form-group" style="margin-bottom:0"><label>Second phone</label><input type="tel" value="${c.phone2||''}" onchange="updateCust(${c.id},'phone2',this.value)" placeholder="\u2014"></div></div>
+    <div class="form-group" style="margin-top:12px"><label>Email</label><input type="email" value="${c.email}" onchange="updateCust(${c.id},'email',this.value)"></div>
+    <div class="form-group"><label>Address</label><input type="text" value="${c.address}" onchange="updateCust(${c.id},'address',this.value)"></div>
+    <div class="form-group"><label>Notes</label><textarea onchange="updateCust(${c.id},'notes',this.value)">${c.notes}</textarea></div>
+    <div class="section-title">Service history</div>
+    ${cJobs.length?cJobs.sort((a,b)=>a.date>b.date?-1:1).map(j=>`<div class="history-item"><div class="dot ${j.status==='completed'?'':'amber'}"></div><div><div style="font-size:13px;font-weight:500">${fmtDate(j.date)} \u2014 ${j.services.map(s=>SERVICES.find(x=>x.id===s)?.name||s).join(', ')}</div><div style="font-size:12px;color:var(--color-text-secondary)">${j.status}${j.total?' \u00b7 $'+j.total:''}${j.payment?' \u00b7 '+j.payment:''}${j.photos&&j.photos.length?' \u00b7 '+j.photos.length+' photo'+(j.photos.length>1?'s':''):''}</div>${j.techNotes?`<div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">${j.techNotes}</div>`:''}</div></div>`).join(''):'<p style="font-size:13px;color:var(--color-text-secondary)">No service history yet</p>'}
+  </div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openScheduleJobForCustomer(${id})"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
+}
+
+function openScheduleJob(prefillId){
+  const custOpts=customers.map(c=>`<option value="${c.id}" ${prefillId===c.id?'selected':''}>${nameOf(c)}${c.isCompany&&c.contactName?' ('+c.contactName+')':''}</option>`).join('');
+  const pre=prefillId?customers.find(c=>c.id===prefillId):null;
+  const preServ=pre?pre.serviceRequested||[]:[];
+  showModal(`<div class="modal-header"><h3 style="font-size:15px;font-weight:500">Schedule job</h3><button class="btn" onclick="closeModal()"><i class="ti ti-x"></i></button></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Customer</label><select id="sj-cust"><option value="">\u2014 select \u2014</option>${custOpts}</select></div><div class="form-group"><label>Or <span style="color:var(--color-text-info);cursor:pointer" onclick="closeModal();openNewCustomer()">add new customer \u2197</span></label><div style="height:36px"></div></div></div><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}"></div><div class="form-group"><label>Start time (2-hr slot, double-booking ok)</label><input type="time" id="sj-time" value="10:00"></div></div><div class="section-title">Services</div>${SERVICES.map(s=>`<div class="service-item"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''}><label for="svc-${s.id}" style="font-size:13px;color:var(--color-text-primary);cursor:pointer;margin:0">${s.name}</label></div>`).join('')}<div class="surcharge-box" style="margin-top:10px"><input type="checkbox" id="sj-surcharge" style="width:auto"><label>Above 2nd floor surcharge</label><input type="number" id="sj-surcharge-amt" placeholder="$0" style="width:80px;background:var(--color-background-primary)"></div><div class="section-title">Products</div>${PRODUCTS.map(p=>`<div class="service-item"><input type="checkbox" id="prd-${p.id}"><label for="prd-${p.id}" style="font-size:13px;color:var(--color-text-primary);cursor:pointer;margin:0">${p.name}</label></div>`).join('')}<div class="form-group" style="margin-top:12px"><label>Job notes</label><textarea id="sj-notes" placeholder="Access notes, customer requests...">${pre?pre.notes||'':''}</textarea></div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob()"><i class="ti ti-calendar-check"></i> Schedule & send confirmation</button></div>`);
+}
+function openScheduleJobForCustomer(id){openScheduleJob(id);}
+function saveJob(){
+  const custId=parseInt(document.getElementById('sj-cust').value);if(!custId)return toast('Please select a customer');
+  const cust=customers.find(c=>c.id===custId);
+  const services=SERVICES.filter(s=>document.getElementById('svc-'+s.id)?.checked).map(s=>s.id);if(!services.length)return toast('Please select at least one service');
+  const products=PRODUCTS.filter(p=>document.getElementById('prd-'+p.id)?.checked).map(p=>p.id);
+  jobs.push({id:nextJobId++,customerId:custId,customerName:nameOf(cust),date:document.getElementById('sj-date').value,time:document.getElementById('sj-time').value,status:'scheduled',services,products,surcharge:document.getElementById('sj-surcharge').checked,surchargeAmt:parseFloat(document.getElementById('sj-surcharge-amt').value)||0,total:0,payment:'',notes:document.getElementById('sj-notes').value,techNotes:'',photos:[],nextServiceMonths:12});
+  reminders=reminders.filter(r=>r.customerId!==custId);cust.snoozeUntil='';
+  closeModal();toast(`Job booked \u00b7 Confirmation email sent to ${cust.email||nameOf(cust)}`);showView('jobs');
+}
+
+function openJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;if(j.status==='completed'){openCompletedJob(j);return;}openCompleteJob(id);}
+function money(n){return '$'+(Number(n)||0).toFixed(2);}
+function invRow(name,amt){return '<tr><td style="padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary)">'+name+'</td><td style="padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);text-align:right">'+money(amt)+'</td></tr>';}
+function openInvoice(id){
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  const c=customers.find(x=>x.id===j.customerId)||{};
+  const paid=j.payment&&j.payment!=='Invoice';
+  const docType=paid?'RECEIPT':'INVOICE';
+  let rows='';let subtotal=0;
+  (j.services||[]).forEach(function(sid){const s=SERVICES.find(function(x){return x.id===sid;});if(s){subtotal+=s.price||0;rows+=invRow(s.name,s.price||0);}});
+  (j.products||[]).forEach(function(pid){const p=PRODUCTS.find(function(x){return x.id===pid;});if(p){subtotal+=p.price||0;rows+=invRow(p.name,p.price||0);}});
+  if(j.surchargeAmt){subtotal+=j.surchargeAmt;rows+=invRow('Above 2nd floor surcharge',j.surchargeAmt);}
+  const discount=j.discount||0;
+  const total=(typeof j.total==='number'&&j.total)?j.total:Math.max(0,subtotal-discount);
+  const invNo='KV-'+(j.date||'').replace(/-/g,'')+'-'+String(j.id).padStart(3,'0');
+  const billName=((c.firstName||'')+' '+(c.lastName||'')).trim()||c.contactName||j.customerName;
+  const statusBox=paid
+    ? '<div style="background:#EAF3DE;border:1px solid #97C459;border-radius:8px;padding:12px 14px;color:#3B6D11"><strong>PAID</strong> \u00b7 '+j.payment+'</div>'
+    : '<div style="background:#FAEEDA;border:1px solid #EF9F27;border-radius:8px;padding:12px 14px;color:#854F0B"><strong>BALANCE DUE: '+money(total)+'</strong><div style="font-size:12px;margin-top:4px">Payment options: Cash, Check, Venmo, Zelle, CashApp</div></div>';
+  showModal(`
+  <div class="modal-header no-print"><h3 style="font-size:15px;font-weight:500">${docType}</h3><button class="btn" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
+  <div class="modal-body" id="invoice-doc" style="background:#fff">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid var(--color-text-primary);padding-bottom:14px;margin-bottom:14px">
+      <div style="display:flex;gap:12px;align-items:center"><img src="${LOGO_SRC}" style="width:56px;height:56px;border-radius:50%;object-fit:cover"><div><div style="font-weight:700;font-size:15px">Klean Ventz</div><div style="font-size:11px;color:var(--color-text-secondary)">Dryer Vent Cleaning &amp; Installation LLC</div><div style="font-size:11px;color:var(--color-text-secondary)">732-808-3637 \u00b7 kleanventz.com</div></div></div>
+      <div style="text-align:right"><div style="font-size:22px;font-weight:700;letter-spacing:.05em">${docType}</div><div style="font-size:11px;color:var(--color-text-secondary)">No. ${invNo}</div><div style="font-size:11px;color:var(--color-text-secondary)">${fmtDate(j.date)}</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:16px;margin-bottom:16px;font-size:12px">
+      <div><div style="font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;font-size:10px;letter-spacing:.05em;margin-bottom:4px">Bill to</div><div style="font-weight:500;font-size:13px">${billName}</div>${c.isCompany&&c.contactName?`<div>${c.contactName}</div>`:''}<div>${c.address||''}</div><div>${c.phone||''}</div><div>${c.email||''}</div></div>
+      <div style="text-align:right"><div style="font-weight:600;color:var(--color-text-secondary);text-transform:uppercase;font-size:10px;letter-spacing:.05em;margin-bottom:4px">Service date</div><div>${fmtDate(j.date)} ${j.time||''}</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px"><thead><tr><th style="text-align:left;border-bottom:1px solid var(--color-border-secondary);padding:6px 0">Description</th><th style="text-align:right;border-bottom:1px solid var(--color-border-secondary);padding:6px 0">Amount</th></tr></thead><tbody>${rows||'<tr><td style="padding:6px 0;color:var(--color-text-secondary)">No items recorded</td><td></td></tr>'}</tbody></table>
+    <div style="margin-left:auto;width:230px;font-size:13px">
+      <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--color-text-secondary)">Subtotal</span><span>${money(subtotal)}</span></div>
+      ${discount?`<div style="display:flex;justify-content:space-between;padding:3px 0;color:#A32D2D"><span>Discount${j.discountReason?' ('+j.discountReason+')':''}</span><span>-${money(discount)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--color-border-secondary);font-weight:700;font-size:15px"><span>Total</span><span>${money(total)}</span></div>
+    </div>
+    <div style="margin-top:16px">${statusBox}</div>
+    ${j.techNotes?`<div style="margin-top:14px;font-size:12px;color:var(--color-text-secondary)"><strong style="color:var(--color-text-primary)">Notes:</strong> ${j.techNotes}</div>`:''}
+    <div style="margin-top:18px;padding-top:14px;border-top:0.5px solid var(--color-border-tertiary);text-align:center;font-size:12px;color:var(--color-text-secondary)">Thank you for your business! We'd love a review:<br><span style="color:var(--color-text-info);word-break:break-all">${GOOGLE_REVIEW_URL}</span></div>
+  </div>
+  <div class="modal-footer no-print"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="window.print()"><i class="ti ti-printer"></i> Print / Save as PDF</button></div>`);
+}
+function openCompletedJob(j){const cc=customers.find(x=>x.id===j.customerId)||{};showModal(`<div class="modal-header"><h3 style="font-size:15px;font-weight:500">Completed \u2014 ${j.customerName}</h3><button class="btn" onclick="closeModal()"><i class="ti ti-x"></i></button></div><div class="modal-body"><div class="grid2" style="margin-bottom:16px"><div class="metric"><div class="metric-label">Date</div><div class="metric-val" style="font-size:14px">${fmtDate(j.date)} ${j.time}</div></div><div class="metric"><div class="metric-label">Total collected</div><div class="metric-val">$${j.total}</div></div></div><p style="font-size:13px;color:var(--color-text-secondary);margin-bottom:8px"><i class="ti ti-map-pin"></i> ${cc.address||'No address on file'}${cc.phone?' \u00b7 '+cc.phone:''}</p><p style="font-size:13px;margin-bottom:8px"><strong>Services:</strong> ${j.services.map(s=>SERVICES.find(x=>x.id===s)?.name||s).join(', ')}</p>${j.products.length?`<p style="font-size:13px;margin-bottom:8px"><strong>Products:</strong> ${j.products.map(p=>PRODUCTS.find(x=>x.id===p)?.name||p).join(', ')}</p>`:''}${j.discount?`<p style="font-size:13px;margin-bottom:8px"><strong>Discount:</strong> -$${j.discount}${j.discountReason?' ('+j.discountReason+')':''}</p>`:''}${j.techNotes?`<p style="font-size:13px;margin-bottom:8px"><strong>Tech notes:</strong> ${j.techNotes}</p>`:''}${j.photos&&j.photos.length?`<p style="font-size:13px;margin-bottom:8px"><strong>Photos:</strong> ${j.photos.join(', ')}</p>`:''}<p style="font-size:13px;margin-bottom:8px"><strong>Payment:</strong> ${j.payment||'\u2014'}</p><p style="font-size:13px"><strong>Next service due:</strong> ${j.nextServiceMonths} months</p><div style="margin-top:16px;padding:12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);font-size:12px;color:var(--color-text-secondary)"><span style="font-weight:500;color:var(--color-text-primary)">Sent automatically:</span> ${j.payment&&j.payment!=='Invoice'?'Receipt':'Invoice'} + Google review request</div></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="openInvoice(${j.id})"><i class="ti ti-file-invoice"></i> View invoice / receipt</button></div>`);}
+function openCompleteJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;selectedPayment='';const cc=customers.find(x=>x.id===j.customerId)||{};showModal(`<div class="modal-header"><h3 style="font-size:15px;font-weight:500">Complete job \u2014 ${j.customerName}</h3><button class="btn" onclick="closeModal()"><i class="ti ti-x"></i></button></div><div class="modal-body"><div style="background:#EAF3DE;border:0.5px solid #97C459;border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:16px;font-size:13px;color:#3B6D11"><i class="ti ti-calendar-check" style="font-size:15px;vertical-align:-2px;margin-right:6px"></i>${fmtDate(j.date)} at ${j.time} \u00b7 ${j.customerName}</div><div style="font-size:13px;color:var(--color-text-secondary);margin:-8px 0 14px"><i class="ti ti-map-pin"></i> ${cc.address||'No address on file'}${cc.phone?' \u00b7 '+cc.phone:''}</div><div class="section-title">Services performed</div>${SERVICES.map(s=>`<div class="service-item"><input type="checkbox" id="cs-${s.id}" ${j.services.includes(s.id)?'checked':''}><label for="cs-${s.id}" style="font-size:13px;color:var(--color-text-primary);cursor:pointer;margin:0">${s.name}</label></div>`).join('')}<div class="surcharge-box" style="margin-top:10px"><input type="checkbox" id="cs-surcharge" ${j.surcharge?'checked':''} style="width:auto"><label>Above 2nd floor surcharge</label><input type="number" id="cs-surcharge-amt" value="${j.surchargeAmt||''}" placeholder="$0" style="width:80px;background:var(--color-background-primary)"></div><div class="section-title" style="margin-top:12px">Products sold</div>${PRODUCTS.map(p=>`<div class="service-item"><input type="checkbox" id="cp-${p.id}" ${j.products.includes(p.id)?'checked':''}><label for="cp-${p.id}" style="font-size:13px;color:var(--color-text-primary);cursor:pointer;margin:0">${p.name}</label><input type="number" placeholder="qty" style="width:52px;margin-left:auto"></div>`).join('')}<div class="form-group" style="margin-top:12px"><label>Technician notes</label><textarea id="cs-notes" placeholder="Blockage found, condition, anything notable...">${j.techNotes}</textarea></div><div class="form-group"><label>Photos <span class="optional-tag">optional</span></label><input type="file" id="cs-photos" accept="image/*" multiple></div><div class="form-group"><label>Job total ($) <span class="optional-tag">auto-totaled from your catalog \u2014 editable</span></label><input type="number" id="cs-total" value="${j.total||jobCharge(j)}" placeholder="0.00" oninput="updateNet()"></div><div class="form-row"><div class="form-group" style="margin-bottom:0"><label>Discount ($) <span class="optional-tag">optional</span></label><input type="number" id="cs-discount" value="${j.discount||''}" placeholder="0.00" oninput="updateNet()"></div><div class="form-group" style="margin-bottom:0"><label>Discount reason</label><input type="text" id="cs-discount-reason" value="${(j.discountReason||'').replace(/"/g,'&quot;')}" placeholder="e.g. repeat customer, senior"></div></div><div style="font-size:13px;color:var(--color-text-secondary);margin:-2px 0 12px">Customer pays: <strong id="cs-net" style="color:var(--color-text-primary)">$${Math.max(0,((j.total||jobCharge(j))-(j.discount||0))).toFixed(2)}</strong></div><div class="form-group"><label>Recommended next service</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${j.nextServiceMonths===m?'selected':''}>${m} months</option>`).join('')}</select></div><div class="section-title">Payment collected</div><div class="payment-opts">${PAYMENT_METHODS.map(m=>`<div class="payment-opt" id="pay-${m}" onclick="selectPay('${m}')">${m}</div>`).join('')}</div><p style="font-size:12px;color:var(--color-text-secondary);margin-top:8px">Leave unselected to send an invoice instead of a receipt (collect payment later from the office, then complete).</p></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-success" onclick="completeJob(${id})"><i class="ti ti-check"></i> Complete & send</button></div>`);}
+function selectPay(m){selectedPayment=m;document.querySelectorAll('.payment-opt').forEach(el=>el.classList.remove('selected'));const el=document.getElementById('pay-'+m);if(el)el.classList.add('selected');}
+function updateNet(){var t=parseFloat(document.getElementById('cs-total').value)||0;var d=parseFloat(document.getElementById('cs-discount').value)||0;var el=document.getElementById('cs-net');if(el)el.textContent='$'+Math.max(0,(t-d)).toFixed(2);}
+function completeJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;j.services=SERVICES.filter(s=>document.getElementById('cs-'+s.id)?.checked).map(s=>s.id);j.products=PRODUCTS.filter(p=>document.getElementById('cp-'+p.id)?.checked).map(p=>p.id);j.surcharge=document.getElementById('cs-surcharge').checked;j.surchargeAmt=parseFloat(document.getElementById('cs-surcharge-amt').value)||0;j.discount=parseFloat(document.getElementById('cs-discount').value)||0;j.discountReason=document.getElementById('cs-discount-reason').value;j.total=Math.max(0,(parseFloat(document.getElementById('cs-total').value)||0)-j.discount);j.payment=selectedPayment;j.techNotes=document.getElementById('cs-notes').value;const pf=document.getElementById('cs-photos');j.photos=pf&&pf.files?Array.from(pf.files).map(f=>f.name):[];j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;j.status='completed';const cust=customers.find(c=>c.id===j.customerId);if(cust){cust.lastService=j.date;cust.jobs=(cust.jobs||0)+1;cust.snoozeUntil='';cust.nextServiceMonths=j.nextServiceMonths;const nd=new Date(j.date);nd.setMonth(nd.getMonth()+j.nextServiceMonths);cust.nextDue=nd.toISOString().slice(0,10);}reminders=reminders.filter(r=>r.customerId!==j.customerId);closeModal();toast(selectedPayment&&selectedPayment!=='Invoice'?'Complete \u00b7 Receipt & review request sent':'Complete \u00b7 Invoice & review request sent');showView('jobs');}
+function updateCust(id,field,val){const c=customers.find(x=>x.id===id);if(c)c[field]=val;}
+function showModal(html){document.getElementById('modal-container').innerHTML=`<div class="modal-bg" onclick="bgClose(event)"><div class="modal">${html}</div></div>`;}
+function closeModal(){document.getElementById('modal-container').innerHTML='';}
+function bgClose(e){if(e.target.classList.contains('modal-bg'))closeModal();}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3200);}
+function initials(c){return (((c.firstName||c.contactName||'?')[0]||'')+((c.lastName||'')[0]||'')).toUpperCase();}
+function fmtDate(d){if(!d)return'\u2014';const p=d.split('-');const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return months[parseInt(p[1])-1]+' '+parseInt(p[2])+', '+p[0];}
+function statusBadge(s){return{scheduled:'badge-blue',completed:'badge-green'}[s]||'badge-gray';}
+(function seedDemo(){
+  const demoPeople=[
+    ['James','Whitfield','14 Sycamore Dr, Manalapan NJ 07726','(732) 555-0101'],
+    ['Patricia','Nguyen','220 Hawthorne Ave, Marlboro NJ 07746','(732) 555-0102'],
+    ['Marcus','Bell','7 Dogwood Ln, Freehold NJ 07728','(732) 555-0103'],
+    ['Aisha','Rahman','19 Juniper Ct, Howell NJ 07731','(732) 555-0104'],
+    ['Frank','DeLuca','305 Cherry St, Old Bridge NJ 08857','(732) 555-0105'],
+    ['Karen','Olsen','42 Magnolia Dr, Manalapan NJ 07726','(732) 555-0106'],
+    ['Devon','Pierce','88 Aspen Way, Marlboro NJ 07746','(732) 555-0107'],
+    ['Sofia','Marino','11 Linden Rd, Freehold NJ 07728','(732) 555-0108'],
+    ['Henry','Cho','27 Poplar Ave, Howell NJ 07731','(732) 555-0109'],
+    ['Tanya','Brooks','150 Walnut St, Old Bridge NJ 08857','(732) 555-0110'],
+    ['Raymond','Ford','63 Birchwood Dr, Manalapan NJ 07726','(732) 555-0111'],
+    ['Elena','Vasquez','9 Maplecrest Ct, Marlboro NJ 07746','(732) 555-0112'],
+    ['Greg','Sanderson','201 Elmwood Ave, Freehold NJ 07728','(732) 555-0113'],
+    ['Nadia','Khan','34 Cedarbrook Rd, Howell NJ 07731','(732) 555-0114'],
+  ];
+  let cid=100;const demoIds=[];
+  demoPeople.forEach(function(p){customers.push({id:cid,isCompany:false,contactName:'',contactPhone:'',firstName:p[0],lastName:p[1],phone:p[3],phone2:'',email:(p[0][0]+p[1]).toLowerCase()+'@email.com',address:p[2],leadSource:'Google',serviceRequested:['dvc1'],notes:'',lastService:'',nextDue:'',nextServiceMonths:12,jobs:0,snoozeUntil:''});demoIds.push(cid);cid++;});
+  nextCustId=Math.max(nextCustId,cid);
+  const start=weekStartKey(dOff(0));
+  const times=['08:00','08:00','09:30','11:00','11:00','13:00','14:30','16:00'];
+  const svcBySlot=[['dvc1'],['bfc1'],['dvc2'],['bn1'],['dvc1'],['di1'],['bfc1'],['dvc1']];
+  const today=dOff(0);
+  let jid=200,pick=0;
+  for(let dd=0;dd<7;dd++){
+    const dateKey=addDays(start,dd);
+    const past=dateKey<today;
+    for(let n=0;n<8;n++){
+      const cu=customers.find(function(x){return x.id===demoIds[pick%demoIds.length];});pick++;
+      const svc=svcBySlot[n].slice();
+      const prod=(n%3===0)?['p1']:[];
+      let total=0,payment='',techNotes='';
+      if(past){svc.forEach(function(s){const o=SERVICES.find(function(x){return x.id===s;});if(o)total+=o.price;});prod.forEach(function(s){const o=PRODUCTS.find(function(x){return x.id===s;});if(o)total+=o.price;});payment=['Cash','Check','Zelle','Venmo'][n%4];techNotes='Completed on schedule';}
+      jobs.push({id:jid++,customerId:cu.id,customerName:nameOf(cu),date:dateKey,time:times[n],status:past?'completed':'scheduled',services:svc,products:prod,surcharge:false,surchargeAmt:0,total:total,payment:payment,notes:'',techNotes:techNotes,photos:[],nextServiceMonths:12});
+    }
+  }
+  nextJobId=Math.max(nextJobId,jid);
+})();
+snapshotLoc('nj');buildMidwest();updateLocUI();
+showView('dashboard');
+</script>
+</body>
+</html>
