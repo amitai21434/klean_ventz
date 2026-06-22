@@ -110,13 +110,48 @@ function taskDashRow(t){
 }
 
 /* ---------------------------------------------------------- QUICK ADD */
-function quickAddTask(inputId){
+function taskPayloadFromTask(t){
+  return {
+    text:t.text,
+    date:t.date||null,
+    time:t.time||null,
+    customerId:t.customerId||null,
+    contact:t.contact||'',
+    done:!!t.done
+  };
+}
+function firstReturned(json){return Array.isArray(json)?json[0]:json;}
+function replaceTask(updated){
+  const idx=tasks.findIndex(t=>t.id===updated.id);
+  if(idx>=0)tasks[idx]=updated;
+  else tasks.push(updated);
+  nextTaskId=Math.max(nextTaskId,(updated.id||0)+1);
+}
+async function createTask(payload){
+  const resp=await fetch('/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create task failed');}
+  const created=firstReturned(await resp.json());
+  if(!created)throw new Error('No task returned');
+  replaceTask(created);
+  return created;
+}
+async function updateTask(id,payload){
+  const resp=await fetch(`/api/tasks/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update task failed');}
+  const updated=firstReturned(await resp.json());
+  if(!updated)throw new Error('No task returned');
+  replaceTask(updated);
+  return updated;
+}
+async function quickAddTask(inputId){
   const inp=document.getElementById(inputId);if(!inp)return;
   const v=inp.value.trim();if(!v)return toast('Type a task first');
-  tasks.push({id:nextTaskId++,text:v,date:dOff(0),time:'',customerId:null,contact:'',done:false});
-  inp.value='';
-  toast('Task added for today');
-  showView(currentView);
+  try{
+    await createTask({text:v,date:dOff(0),time:null,customerId:null,contact:'',done:false});
+    inp.value='';
+    toast('Task added for today');
+    showView(currentView);
+  }catch(err){console.error('quickAddTask error',err);toast('Error adding task');}
 }
 
 /* ---------------------------------------------------------- ADD / EDIT MODAL */
@@ -127,8 +162,8 @@ function openTaskModal(id){
   <div class="sheet-body">
     <div class="field"><label>Task</label><textarea id="tk-text" placeholder="What needs doing? e.g. Call the advertising agency about next month\u2019s campaign" style="min-height:70px">${t?tEsc(t.text):''}</textarea></div>
     <div class="field-row">
-      <div class="field" style="margin:0"><label>Date <span class="optional-tag">optional</span></label><input type="date" id="tk-date" value="${t?t.date:''}"></div>
-      <div class="field" style="margin:0"><label>Time <span class="optional-tag">optional</span></label><input type="time" id="tk-time" value="${t?t.time:''}"></div>
+      <div class="field" style="margin:0"><label>Date <span class="optional-tag">optional</span></label><input type="date" id="tk-date" value="${t&&t.date?t.date:''}"></div>
+      <div class="field" style="margin:0"><label>Time <span class="optional-tag">optional</span></label><input type="time" id="tk-time" value="${t&&t.time?t.time:''}"></div>
     </div>
     <div class="field"><label>Phone or email <span class="optional-tag">optional - tap to call or email</span></label><input type="text" id="tk-contact" value="${t?tAttr(t.contact||''):''}" placeholder="(732) 555-0000  or  name@company.com"></div>
     <div class="field" style="margin:0"><label>Link a customer <span class="optional-tag">optional</span></label><select id="tk-cust"><option value="">\u2014 none \u2014</option>${custOpts}</select></div>
@@ -137,7 +172,7 @@ function openTaskModal(id){
   <div class="sheet-foot">${id?`<button class="btn" style="margin-right:auto;color:var(--red)" onclick="deleteTask(${id})"><i class="ti ti-trash"></i> Delete</button>`:''}<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTask(${id||'null'})"><i class="ti ti-check"></i> ${id?'Save':'Add task'}</button></div>`);
   setTimeout(()=>{const el=document.getElementById('tk-text');if(el){el.focus();}},60);
 }
-function saveTask(id){
+async function saveTask(id){
   const text=document.getElementById('tk-text').value.trim();
   if(!text)return toast('Type a task first');
   const date=document.getElementById('tk-date').value;
@@ -145,9 +180,18 @@ function saveTask(id){
   const cv=document.getElementById('tk-cust').value;
   const customerId=cv?parseInt(cv):null;
   const contact=document.getElementById('tk-contact').value.trim();
-  if(id){const t=tasks.find(x=>x.id===id);if(t){t.text=text;t.date=date;t.time=time;t.customerId=customerId;t.contact=contact;}toast('Task saved');}
-  else{tasks.push({id:nextTaskId++,text,date,time,customerId,contact,done:false});toast('Task added');}
-  closeModal();showView(currentView);
+  try{
+    if(id){
+      const t=tasks.find(x=>x.id===id);
+      const payload=taskPayloadFromTask(Object.assign({},t||{}, {text,date,time,customerId,contact}));
+      await updateTask(id,payload);
+      toast('Task saved');
+    }else{
+      await createTask({text,date:date||null,time:time||null,customerId,contact,done:false});
+      toast('Task added');
+    }
+    closeModal();showView(currentView);
+  }catch(err){console.error('saveTask error',err);toast('Error saving task');}
 }
 
 /* ---------------------------------------------------------- COMPLETE / FOLLOW-UP / DELETE */
@@ -155,16 +199,30 @@ function openTaskDone(id){
   const t=tasks.find(x=>x.id===id);if(!t)return;
   showModal(`${headX('Finish task',tEsc(t.text))}
   <div class="sheet-body">
-    <div class="choice" onclick="deleteTask(${id})"><i class="ti ti-circle-check lead" style="color:var(--green)"></i><div><div class="choice-title">Done \u2014 remove it</div><div class="choice-sub">Crosses it off and clears it from your list</div></div></div>
+    <div class="choice" onclick="completeTask(${id})"><i class="ti ti-circle-check lead" style="color:var(--green)"></i><div><div class="choice-title">Done \u2014 remove it</div><div class="choice-sub">Crosses it off and clears it from your list</div></div></div>
     <div class="choice" style="align-items:flex-start" onclick="document.getElementById('tk-fu-wrap').style.display='block';this.style.borderColor='var(--ink-900)'"><i class="ti ti-calendar-repeat lead" style="color:var(--ink-700)"></i><div style="flex:1"><div class="choice-title">Follow up again later</div><div class="choice-sub">Keep it, but push it to a future date so it returns to your dashboard then</div><div id="tk-fu-wrap" style="display:none;margin-top:11px"><input type="date" id="tk-fu-date" value="${addDays(dOff(0),7)}" style="margin-bottom:9px"><button class="btn btn-sm btn-primary" onclick="followUpTask(${id})">Set follow-up date</button></div></div></div>
   </div>`);
 }
-function followUpTask(id){
-  const d=document.getElementById('tk-fu-date').value;if(!d)return toast('Pick a date');
-  const t=tasks.find(x=>x.id===id);if(t){t.date=d;}
-  closeModal();toast('Follow-up set for '+fmtDate(d));showView(currentView);
+async function completeTask(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  try{
+    await updateTask(id,taskPayloadFromTask(Object.assign({},t,{done:true})));
+    closeModal();toast('Task done');showView(currentView);
+  }catch(err){console.error('completeTask error',err);toast('Error completing task');}
 }
-function deleteTask(id){
-  tasks=tasks.filter(t=>t.id!==id);
-  closeModal();toast('Task done');showView(currentView);
+async function followUpTask(id){
+  const d=document.getElementById('tk-fu-date').value;if(!d)return toast('Pick a date');
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  try{
+    await updateTask(id,taskPayloadFromTask(Object.assign({},t,{date:d,done:false})));
+    closeModal();toast('Follow-up set for '+fmtDate(d));showView(currentView);
+  }catch(err){console.error('followUpTask error',err);toast('Error setting follow-up');}
+}
+async function deleteTask(id){
+  try{
+    const resp=await fetch(`/api/tasks/${id}`,{method:'DELETE'});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete task failed');}
+    tasks=tasks.filter(t=>t.id!==id);
+    closeModal();toast('Task deleted');showView(currentView);
+  }catch(err){console.error('deleteTask error',err);toast('Error deleting task');}
 }

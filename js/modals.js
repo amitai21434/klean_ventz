@@ -66,24 +66,89 @@ function openNewCustomer(){
     <div class="field"><label>Email</label><input type="email" id="nc-email" placeholder="jane@email.com"></div>
     <div class="field addr-wrap"><label>Address <span class="optional-tag">populates from Google Maps</span></label><input type="text" id="nc-addr" placeholder="123 Main St, City, NJ" autocomplete="off" oninput="addrInput(this.value)" onblur="setTimeout(hideAddrSug,200)"><div id="addr-suggestions" class="addr-suggestions" style="display:none"></div></div>
     <div class="field"><label>Lead source(s) <span class="optional-tag">how did they hear about us \u2014 pick one or more</span></label>${msMount('nc-ls',[])}</div>
-    <div class="section-title">Service requested</div>
-    ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="ncs-${s.id}"><label for="ncs-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
+    <!-- Service requested removed: customers no longer store requested services -->
     <div class="section-title" style="margin-top:14px">Notes</div>
     <div class="field" style="margin:0"><textarea id="nc-notes" placeholder="Gate code, dog in yard, access instructions\u2026"></textarea></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewCustomer()"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveNewCustomerAndBook()"><i class="ti ti-calendar-plus"></i> Save & book</button><button class="btn btn-primary" onclick="saveNewCustomer()"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
 }
 function addrInput(val){const box=document.getElementById('addr-suggestions');if(!box)return;if(val.length<3){box.style.display='none';return;}const filtered=FAKE_ADDRESSES.filter(a=>a.main.toLowerCase().includes(val.toLowerCase())||a.sub.toLowerCase().includes(val.toLowerCase()));if(!filtered.length){box.style.display='none';return;}box.style.display='block';box.innerHTML=filtered.map(a=>`<div class="addr-suggestion" onmousedown="selectAddr('${a.main}, ${a.sub}')"><div class="main-text">${a.main}</div><div class="sub-text">${a.sub}</div></div>`).join('');}
 function selectAddr(val){const inp=document.getElementById('nc-addr');if(inp)inp.value=val;hideAddrSug();}
 function hideAddrSug(){const box=document.getElementById('addr-suggestions');if(box)box.style.display='none';}
 function saveNewCustomer(){
-  const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
-  const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
-  if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
-  const leadSources=msGet('nc-ls');
-  const serviceRequested=SERVICES.filter(s=>document.getElementById('ncs-'+s.id)?.checked).map(s=>s.id);
-  customers.push({id:nextCustId++,isCompany,contactName,contactPhone:document.getElementById('nc-contactphone').value,firstName,lastName,phone:document.getElementById('nc-phone').value,phone2:document.getElementById('nc-phone2').value,email:document.getElementById('nc-email').value,address:document.getElementById('nc-addr').value,leadSources,serviceRequested,notes:document.getElementById('nc-notes').value,lastService:'',nextDue:'',nextServiceMonths:12,jobs:0,snoozeUntil:''});
-  closeModal();toast('Customer saved');showView('customers');
+  (async function(){
+    const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
+    const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
+    if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
+    const leadSources=msGet('nc-ls');
+    const payload={
+      isCompany: isCompany,
+      contactName: contactName,
+      contactPhone: document.getElementById('nc-contactphone').value,
+      firstName: firstName,
+      lastName: lastName,
+      phone: document.getElementById('nc-phone').value,
+      phone2: document.getElementById('nc-phone2').value,
+      email: document.getElementById('nc-email').value,
+      address: document.getElementById('nc-addr').value,
+      leadSources: (leadSources||[]),
+      notes: document.getElementById('nc-notes').value,
+      lastService: null,
+      nextDue: null,
+      nextServiceMonths: 12,
+      snoozeUntil: null
+    };
+    try{
+      const resp=await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
+      const json=await resp.json();
+      const created = Array.isArray(json)?json[0]:json;
+      if(created){
+        customers.push(created);
+        nextCustId = Math.max(nextCustId, (created.id||0)+1);
+        closeModal();toast('Customer saved');showView('customers');
+      }else{throw new Error('No customer returned');}
+    }catch(err){console.error('saveNewCustomer error',err);toast('Error saving customer');}
+  })();
+}
+
+function saveNewCustomerAndBook(){
+  (async function(){
+    const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
+    const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
+    if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
+    const leadSources=msGet('nc-ls');
+    const payload={
+      isCompany: isCompany,
+      contactName: contactName,
+      contactPhone: document.getElementById('nc-contactphone').value,
+      firstName: firstName,
+      lastName: lastName,
+      phone: document.getElementById('nc-phone').value,
+      phone2: document.getElementById('nc-phone2').value,
+      email: document.getElementById('nc-email').value,
+      address: document.getElementById('nc-addr').value,
+      leadSources: (leadSources||[]),
+      notes: document.getElementById('nc-notes').value,
+      lastService: null,
+      nextDue: null,
+      nextServiceMonths: 12,
+      snoozeUntil: null
+    };
+    try{
+      const resp=await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
+      const json=await resp.json();
+      const created = Array.isArray(json)?json[0]:json;
+      if(created){
+        customers.push(created);
+        nextCustId = Math.max(nextCustId, (created.id||0)+1);
+        closeModal();toast('Customer saved');
+        // open booking modal prefilled for this customer
+        openScheduleJobForCustomer(created.id);
+      }else{throw new Error('No customer returned');}
+    }catch(err){console.error('saveNewCustomerAndBook error',err);toast('Error saving customer');}
+  })();
 }
 
 /* ---------------------------------------------------------- CUSTOMER DETAIL */
@@ -114,7 +179,19 @@ function openCustomer(id){
   </div>
   <div class="sheet-foot"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openScheduleJobForCustomer(${id})"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
 }
-function updateCust(id,field,val){const c=customers.find(x=>x.id===id);if(c)c[field]=val;}
+function updateCust(id,field,val){
+  (async function(){
+    const c=customers.find(x=>x.id===id);
+    if(!c)return;
+    c[field]=val;
+    const payload={};
+    payload[field]=val;
+    try{
+      const resp=await fetch(`/api/customers/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!resp.ok){const txt=await resp.text();console.error('Update failed',txt);toast('Error saving');}
+    }catch(err){console.error('updateCust error',err);toast('Error saving');}
+  })();
+}
 
 /* ---------------------------------------------------------- SCHEDULE JOB */
 function openScheduleJob(prefillId){
@@ -137,20 +214,51 @@ function openScheduleJob(prefillId){
 }
 function openScheduleJobForCustomer(id){openScheduleJob(id);}
 function saveJob(){
-  const custId=parseInt(document.getElementById('sj-cust').value);if(!custId)return toast('Please select a customer');
-  const cust=customers.find(c=>c.id===custId);
-  const services=SERVICES.filter(s=>document.getElementById('svc-'+s.id)?.checked).map(s=>s.id);if(!services.length)return toast('Please select at least one service');
-  const products=PRODUCTS.filter(p=>document.getElementById('prd-'+p.id)?.checked).map(p=>p.id);
-  jobs.push({id:nextJobId++,customerId:custId,customerName:nameOf(cust),date:document.getElementById('sj-date').value,time:document.getElementById('sj-time').value,status:'scheduled',services,products,surcharge:document.getElementById('sj-surcharge').checked,surchargeAmt:parseFloat(document.getElementById('sj-surcharge-amt').value)||0,total:0,payment:'',notes:document.getElementById('sj-notes').value,techNotes:'',photos:[],nextServiceMonths:cust.nextServiceMonths||12});
-  reminders=reminders.filter(r=>r.customerId!==custId);cust.snoozeUntil='';
-  closeModal();toast(`Job booked \u00b7 Confirmation sent to ${cust.email||nameOf(cust)}`);showView('jobs');
+  (async function(){
+    const custId=parseInt(document.getElementById('sj-cust').value);
+    if(!custId)return toast('Please select a customer');
+    const cust=customers.find(c=>c.id===custId);
+    const services=SERVICES.filter(s=>document.getElementById('svc-'+s.id)?.checked).map(s=>s.id);
+    if(!services.length)return toast('Please select at least one service');
+    const products=PRODUCTS.filter(p=>document.getElementById('prd-'+p.id)?.checked).map(p=>p.id);
+    const payload={
+      customerId: custId,
+      customerName: nameOf(cust),
+      date: document.getElementById('sj-date').value,
+      time: document.getElementById('sj-time').value,
+      status: 'scheduled',
+      services: services,
+      products: products,
+      surcharge: document.getElementById('sj-surcharge').checked,
+      surchargeAmt: parseFloat(document.getElementById('sj-surcharge-amt').value)||0,
+      total: 0,
+      payment: '',
+      notes: document.getElementById('sj-notes').value,
+      techNotes: '',
+      nextServiceMonths: cust.nextServiceMonths||12
+    };
+    try{
+      const resp=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
+      const json=await resp.json();
+      const created = Array.isArray(json)?json[0]:json;
+      if(created){
+        jobs.push(created);
+        nextJobId = Math.max(nextJobId, (created.id||0)+1);
+        reminders=reminders.filter(r=>r.customerId!==custId);
+        cust.snoozeUntil=null;
+        closeModal();toast('Job booked');
+        showView('jobs');
+      }else{throw new Error('No job returned');}
+    }catch(err){console.error('saveJob error',err);toast('Error saving job');}
+  })();
 }
 
 /* ---------------------------------------------------------- JOB OPEN / COMPLETE */
 function openJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;if(j.status==='completed'){openCompletedJob(j);return;}openCompleteJob(id);}
 
 function openCompleteJob(id){
-  const j=jobs.find(x=>x.id===id);if(!j)return;selectedPayment='';
+  const j=jobs.find(x=>x.id===id);if(!j)return;selectedPayment=j.payment||'';
   const cc=customers.find(x=>x.id===j.customerId)||{};
   showModal(`${headX('Complete job',nameOf(cc))}
   <div class="sheet-body">
@@ -171,7 +279,7 @@ function openCompleteJob(id){
     <div class="field"><label>Photos <span class="optional-tag">before / after</span></label><input type="file" id="cs-photos" accept="image/*" multiple></div>
     <div class="field" style="margin:0"><label>Next service due in</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${(j.nextServiceMonths||12)===m?'selected':''}>${m} months</option>`).join('')}</select></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-success" onclick="completeJob(${id})"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveJobEdits(${id})"><i class="ti ti-device-floppy"></i> Save</button><button class="btn btn-success" onclick="completeJob(${id})"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
 }
 function recalcCompleteTotal(){
   let t=0;
@@ -182,8 +290,7 @@ function recalcCompleteTotal(){
 }
 function selectPay(m){selectedPayment=m;document.querySelectorAll('.pay-opt').forEach(el=>el.classList.remove('selected'));const el=document.getElementById('pay-'+m);if(el)el.classList.add('selected');}
 function updateNet(){const t=parseFloat(document.getElementById('cs-total').value)||0;const d=parseFloat(document.getElementById('cs-discount').value)||0;const el=document.getElementById('cs-net');if(el)el.textContent=money2(Math.max(0,t-d));}
-function completeJob(id){
-  const j=jobs.find(x=>x.id===id);if(!j)return;
+function hydrateJobModal(j){
   j.services=SERVICES.filter(s=>document.getElementById('cs-'+s.id)?.checked).map(s=>s.id);
   j.products=PRODUCTS.filter(p=>document.getElementById('cp-'+p.id)?.checked).map(p=>p.id);
   j.surcharge=document.getElementById('cs-surcharge').checked;
@@ -193,15 +300,70 @@ function completeJob(id){
   j.total=Math.max(0,(parseFloat(document.getElementById('cs-total').value)||0)-j.discount);
   j.payment=selectedPayment;
   j.techNotes=document.getElementById('cs-notes').value;
-  const pf=document.getElementById('cs-photos');j.photos=pf&&pf.files?Array.from(pf.files).map(f=>f.name):[];
+  const pf=document.getElementById('cs-photos');
+  if(pf && pf.files && pf.files.length) j.photos=Array.from(pf.files).map(f=>f.name);
   j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;
-  j.status='completed';
-  const cust=customers.find(c=>c.id===j.customerId);
-  if(cust){cust.lastService=j.date;cust.jobs=(cust.jobs||0)+1;cust.snoozeUntil='';cust.nextServiceMonths=j.nextServiceMonths;const nd=new Date(j.date);nd.setMonth(nd.getMonth()+j.nextServiceMonths);cust.nextDue=nd.toISOString().slice(0,10);}
-  reminders=reminders.filter(r=>r.customerId!==j.customerId);
-  closeModal();toast(selectedPayment&&selectedPayment!=='Invoice'?'Complete \u00b7 Receipt & review request sent':'Complete \u00b7 Invoice & review request sent');showView('jobs');
+}
+async function saveJobEdits(id){
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  hydrateJobModal(j);
+  const payload={
+    services:j.services,
+    products:j.products,
+    surcharge:j.surcharge,
+    surchargeAmt:j.surchargeAmt,
+    discount:j.discount,
+    discountReason:j.discountReason,
+    total:j.total,
+    payment:j.payment,
+    techNotes:j.techNotes,
+    photos:j.photos,
+    nextServiceMonths:j.nextServiceMonths,
+    status:j.status
+  };
+  try{
+    const resp=await fetch(`/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
+    const json=await resp.json();
+    const updated=Array.isArray(json)?json[0]:json;
+    if(!updated)throw new Error('No job returned');
+    Object.assign(j,updated);
+    toast('Job saved');
+    showView('jobs');
+  }catch(err){console.error('saveJobEdits error',err);toast('Error saving job');}
 }
 
+async function completeJob(id){
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  hydrateJobModal(j);
+  j.status='completed';
+  const payload={
+    services:j.services,
+    products:j.products,
+    surcharge:j.surcharge,
+    surchargeAmt:j.surchargeAmt,
+    discount:j.discount,
+    discountReason:j.discountReason,
+    total:j.total,
+    payment:j.payment,
+    techNotes:j.techNotes,
+    photos:j.photos,
+    nextServiceMonths:j.nextServiceMonths,
+    status:j.status
+  };
+  try{
+    const resp=await fetch(`/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Complete failed');}
+    const json=await resp.json();
+    const updated=Array.isArray(json)?json[0]:json;
+    if(!updated)throw new Error('No job returned');
+    Object.assign(j,updated);
+    const cust=customers.find(c=>c.id===j.customerId);
+    if(cust){cust.lastService=j.date;cust.jobs=(cust.jobs||0)+1;cust.snoozeUntil='';cust.nextServiceMonths=j.nextServiceMonths;const nd=new Date(j.date);nd.setMonth(nd.getMonth()+j.nextServiceMonths);cust.nextDue=nd.toISOString().slice(0,10);}
+    reminders=reminders.filter(r=>r.customerId!==j.customerId);
+    closeModal();toast(selectedPayment&&selectedPayment!=='Invoice'?'Complete - Receipt & review request sent':'Complete - Invoice & review request sent');showView('jobs');
+  }catch(err){console.error('completeJob error',err);toast('Error completing job');}
+}
 function openCompletedJob(j){
   const cc=customers.find(x=>x.id===j.customerId)||{};
   const sentLine=j.payment&&j.payment!=='Invoice'?'Receipt &amp; review request':'Invoice &amp; review request';

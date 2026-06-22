@@ -251,9 +251,49 @@ function catalogRow(type,it){
     <button class="btn btn-sm btn-icon" title="Remove" onclick="deleteCatalog('${type}','${it.id}')"><i class="ti ti-trash"></i></button>
   </div>`;
 }
-function updateCatalog(type,id,field,val){const arr=type==='service'?SERVICES:PRODUCTS;const it=arr.find(x=>x.id===id);if(it){it[field]=val;showView('catalog');}}
-function deleteCatalog(type,id){if(type==='service')SERVICES=SERVICES.filter(x=>x.id!==id);else PRODUCTS=PRODUCTS.filter(x=>x.id!==id);showView('catalog');toast('Removed');}
-function addCatalogItem(type){const arr=type==='service'?SERVICES:PRODUCTS;const id=(type==='service'?'svc':'prd')+Date.now();arr.push({id,name:type==='service'?'New service':'New product',price:0,cost:0});showView('catalog');toast('Added \u2014 edit the details');}
+function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
+function catalogEndpoint(type){return type==='service'?'/api/services':'/api/products';}
+function catalogFirstReturned(json){return Array.isArray(json)?json[0]:json;}
+function replaceCatalogItem(type,item){
+  const arr=catalogList(type);
+  const idx=arr.findIndex(x=>String(x.id)===String(item.id));
+  if(idx>=0)arr[idx]=item;
+  else arr.push(item);
+}
+async function updateCatalog(type,id,field,val){
+  const it=catalogList(type).find(x=>String(x.id)===String(id));
+  if(!it)return;
+  try{
+    const payload={name:it.name,price:it.price||0,cost:it.cost||0};
+    payload[field]=val;
+    const resp=await fetch(`${catalogEndpoint(type)}/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update failed');}
+    const updated=catalogFirstReturned(await resp.json());
+    if(!updated)throw new Error('No item returned');
+    replaceCatalogItem(type,updated);
+    showView('catalog');
+  }catch(err){console.error('updateCatalog error',err);toast('Error saving item');showView('catalog');}
+}
+async function deleteCatalog(type,id){
+  try{
+    const resp=await fetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE'});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+    if(type==='service')SERVICES=SERVICES.filter(x=>String(x.id)!==String(id));
+    else PRODUCTS=PRODUCTS.filter(x=>String(x.id)!==String(id));
+    showView('catalog');toast('Removed');
+  }catch(err){console.error('deleteCatalog error',err);toast('Error removing item');}
+}
+async function addCatalogItem(type){
+  const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0};
+  try{
+    const resp=await fetch(catalogEndpoint(type),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
+    const created=catalogFirstReturned(await resp.json());
+    if(!created)throw new Error('No item returned');
+    replaceCatalogItem(type,created);
+    showView('catalog');toast('Added - edit the details');
+  }catch(err){console.error('addCatalogItem error',err);toast('Error adding item');}
+}
 
 /* ---------------------------------------------------------- SETTINGS */
 function renderSettings(){

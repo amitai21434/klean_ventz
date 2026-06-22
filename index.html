@@ -74,11 +74,18 @@
 <script src="js/tasks.js"></script>
 <script src="js/modals.js"></script>
 <script>
-  seedDemo();
-  snapshotLoc('nj');
-  buildMidwest();
-  updateLocUI();
-  showView('dashboard');
+  (async function init(){
+    try{ buildMidwest(); }catch(e){console.error('buildMidwest error',e);} 
+    try{
+      await loadData();
+      snapshotLoc('nj');
+    }catch(e){
+      console.error('loadData failed',e);
+      snapshotLoc('nj');
+    }
+    updateLocUI();
+    showView('dashboard');
+  })();
 </script>
 </body>
 </html>

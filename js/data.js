@@ -4,20 +4,8 @@
 const LOGO_SRC='assets/logo.jpg';
 const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
 
-let SERVICES=[
-  {id:'dvc1',name:'Dryer vent cleaning \u2013 up to 2nd floor',price:165,cost:70},
-  {id:'dvc2',name:'Dryer vent cleaning \u2013 above 2nd floor',price:225,cost:90},
-  {id:'bfc1',name:'Bathroom fan vent cleaning \u2013 up to 2nd floor',price:145,cost:60},
-  {id:'bfc2',name:'Bathroom fan vent cleaning \u2013 above 2nd floor',price:195,cost:80},
-  {id:'bn1',name:'Bird/nest removal \u2013 up to 2nd floor',price:185,cost:75},
-  {id:'bn2',name:'Bird/nest removal \u2013 above 2nd floor',price:245,cost:95},
-  {id:'di1',name:'Duct installation',price:350,cost:150},
-  {id:'dr1',name:'Duct rerouting',price:300,cost:130},
-];
-let PRODUCTS=[
-  {id:'p1',name:'Vent cover/cap',price:45,cost:18},{id:'p2',name:'Bird guard',price:55,cost:22},{id:'p3',name:'Vent hose/duct',price:40,cost:15},
-  {id:'p4',name:'Clamp & connector',price:15,cost:5},{id:'p5',name:'Elbow',price:20,cost:7},{id:'p6',name:'Duct connector/extender',price:25,cost:9},
-];
+let SERVICES = [];
+let PRODUCTS = [];
 
 function jobCost(j){let t=0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.cost||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.cost||0;});return t;}
 function jobCharge(j){let t=j.surchargeAmt||0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.price||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.price||0;});return t;}
@@ -150,35 +138,11 @@ const FAKE_ADDRESSES=[
 function dOff(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
 function addDays(ds,n){const d=new Date(ds);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
 
-let customers=[
-  {id:1,isCompany:false,contactName:'',contactPhone:'',firstName:'Sarah',lastName:'Mitchell',phone:'(732) 555-0142',phone2:'',email:'sarah.m@email.com',address:'24 Maple Dr, Manalapan NJ 07726',leadSources:['Google'],serviceRequested:['dvc1'],notes:'Two dryers in basement',lastService:dOff(-360),nextDue:dOff(-6),nextServiceMonths:12,jobs:1,snoozeUntil:''},
-  {id:2,isCompany:false,contactName:'',contactPhone:'',firstName:'Robert',lastName:'Chen',phone:'(732) 555-0210',phone2:'',email:'rchen@email.com',address:'51 Birch Ln, Howell NJ 07731',leadSources:['Referred by Friend/Neighbor'],serviceRequested:['dvc1'],notes:'',lastService:dOff(-362),nextDue:dOff(3),nextServiceMonths:12,jobs:1,snoozeUntil:''},
-  {id:3,isCompany:true,contactName:'Okafor Properties (David)',contactPhone:'(732) 555-0900',firstName:'David',lastName:'Okafor',phone:'(732) 555-0871',phone2:'',email:'d.okafor@email.com',address:'88 Pine Ave, Marlboro NJ 07746',leadSources:['Neighborhood Chat'],serviceRequested:['dvc1','bfc1'],notes:'Landlord \u2014 6 rental units, bill to office',lastService:dOff(-365),nextDue:dOff(0),nextServiceMonths:12,jobs:1,snoozeUntil:''},
-  {id:4,isCompany:false,contactName:'',contactPhone:'',firstName:'Linda',lastName:'Forsythe',phone:'(732) 555-0334',phone2:'',email:'lforsythe@email.com',address:'12 Oak St, Freehold NJ 07728',leadSources:['Smartlist (Ad)'],serviceRequested:['bfc1'],notes:'Ring doorbell, dog inside',lastService:dOff(-358),nextDue:dOff(5),nextServiceMonths:12,jobs:0,snoozeUntil:''},
-  {id:5,isCompany:false,contactName:'',contactPhone:'',firstName:'Maria',lastName:'Lopez',phone:'(732) 555-0455',phone2:'',email:'mlopez@email.com',address:'9 Cedar Ct, Old Bridge NJ 08857',leadSources:['Google'],serviceRequested:['dvc2'],notes:'3rd floor unit',lastService:dOff(-205),nextDue:dOff(160),nextServiceMonths:12,jobs:0,snoozeUntil:''},
-  {id:6,isCompany:false,contactName:'',contactPhone:'',firstName:'Tom',lastName:'Reilly',phone:'(732) 555-0588',phone2:'',email:'treilly@email.com',address:'7 Elm Rd, Manalapan NJ 07726',leadSources:['Referred by Friend/Neighbor'],serviceRequested:['dvc1'],notes:'Left voicemail last week',lastService:dOff(-378),nextDue:dOff(-13),nextServiceMonths:12,jobs:1,snoozeUntil:''},
-  {id:7,isCompany:false,contactName:'',contactPhone:'',firstName:'Grace',lastName:'Kim',phone:'(732) 555-0619',phone2:'',email:'gkim@email.com',address:'33 Willow Way, Marlboro NJ 07746',leadSources:['Google'],serviceRequested:['dvc1'],notes:'Traveling \u2014 wants a callback',lastService:dOff(-350),nextDue:dOff(40),nextServiceMonths:12,jobs:1,snoozeUntil:''},
-  {id:8,isCompany:false,contactName:'',contactPhone:'',firstName:'Nora',lastName:'Patel',phone:'(732) 555-0733',phone2:'',email:'npatel@email.com',address:'5 Spruce St, Howell NJ 07731',leadSources:['Neighborhood Chat'],serviceRequested:['dvc1'],notes:'',lastService:dOff(-345),nextDue:dOff(20),nextServiceMonths:12,jobs:1,snoozeUntil:''},
-];
-let jobs=[
-  {id:1,customerId:4,customerName:'Linda Forsythe',date:dOff(0),time:'10:00',status:'scheduled',services:['bfc1'],products:[],surcharge:false,surchargeAmt:0,total:0,payment:'',notes:'',techNotes:'',photos:[],nextServiceMonths:12},
-  {id:2,customerId:5,customerName:'Maria Lopez',date:dOff(2),time:'09:00',status:'scheduled',services:['dvc2'],products:[],surcharge:true,surchargeAmt:25,total:0,payment:'',notes:'3rd floor unit',techNotes:'',photos:[],nextServiceMonths:12},
-  {id:3,customerId:1,customerName:'Sarah Mitchell',date:dOff(-360),time:'13:00',status:'completed',services:['dvc1'],products:['p1'],surcharge:false,surchargeAmt:0,total:159,payment:'Cash',notes:'',techNotes:'Heavy lint, replaced cap',photos:[],nextServiceMonths:12},
-  {id:5,customerId:5,customerName:'Maria Lopez',date:dOff(-3),time:'11:00',status:'completed',services:['dvc1'],products:[],surcharge:false,surchargeAmt:0,total:165,payment:'Zelle',notes:'',techNotes:'Routine clean',photos:[],nextServiceMonths:12},
-  {id:6,customerId:3,customerName:'David Okafor',date:dOff(-15),time:'14:00',status:'completed',services:['dvc1','bfc1'],products:['p1'],surcharge:false,surchargeAmt:0,total:355,payment:'Cash',notes:'',techNotes:'Two units serviced',photos:[],nextServiceMonths:12},
-];
-let reminders=[
-  {id:1,customerId:6,dueDate:dOff(0),reason:'Left voicemail \u2014 follow up'},
-  {id:2,customerId:7,dueDate:dOff(12),reason:'Callback \u2014 customer traveling'},
-];
-let nextCustId=9,nextJobId=7,nextReminderId=3,nextTaskId=6,selectedPayment='';
-let tasks=[
-  {id:1,text:'Call Smartlist about renewing the monthly ad',date:dOff(0),time:'14:00',customerId:null,contact:'(732) 555-0190',done:false},
-  {id:2,text:'Order another case of vent caps from the supplier',date:dOff(0),time:'',customerId:null,contact:'orders@ventsupply.com',done:false},
-  {id:3,text:'Pay the quarterly sales tax',date:dOff(-2),time:'',customerId:null,contact:'',done:false},
-  {id:4,text:'Follow up with Okafor Properties about the 6-unit bulk quote',date:dOff(3),time:'10:30',customerId:3,contact:'(732) 555-0900',done:false},
-  {id:5,text:'Pick up new business cards from the printer',date:'',time:'',customerId:null,contact:'',done:false},
-];
+let customers = [];
+let jobs = [];
+let reminders = [];
+let nextCustId=1,nextJobId=1,nextReminderId=1,nextTaskId=1,selectedPayment='';
+let tasks = [];
 let currentView='dashboard';
 let activeLoc='nj';
 const STORE={};
@@ -349,4 +313,44 @@ function seedSourceHistory(custArr,jobsArr,svcArr,prdArr,startId,weights,tag){
   }
   if(tag!=='mw')nextCustId=Math.max(nextCustId,cid);
   return id;
+}
+async function loadData(baseUrl = '/api') {
+  try {
+    const endpoints = [
+      fetch(baseUrl + '/customers'),
+      fetch(baseUrl + '/jobs'),
+      fetch(baseUrl + '/services'),
+      fetch(baseUrl + '/products'),
+      fetch(baseUrl + '/tasks'),
+      fetch(baseUrl + '/reminders'),
+    ];
+    const [custRes, jobsRes, svcRes, prdRes, tasksRes, remRes] = await Promise.all(endpoints);
+    if (!custRes.ok || !jobsRes.ok || !svcRes.ok || !prdRes.ok || !tasksRes.ok || !remRes.ok) {
+      throw new Error('One or more API requests failed');
+    }
+    const [custJson, jobsJson, svcJson, prdJson, tasksJson, remJson] = await Promise.all([
+      custRes.json(), jobsRes.json(), svcRes.json(), prdRes.json(), tasksRes.json(), remRes.json()
+    ]);
+
+    // assign to the app globals (note: uppercase SERVICES/PRODUCTS used elsewhere)
+    customers = Array.isArray(custJson) ? custJson : (custJson.customers || []);
+    jobs = Array.isArray(jobsJson) ? jobsJson : (jobsJson.jobs || []);
+    SERVICES = Array.isArray(svcJson) ? svcJson : (svcJson.services || []);
+    PRODUCTS = Array.isArray(prdJson) ? prdJson : (prdJson.products || []);
+    tasks = Array.isArray(tasksJson) ? tasksJson : (tasksJson.tasks || []);
+    reminders = Array.isArray(remJson) ? remJson : (remJson.reminders || []);
+
+    // recalc next ids so client-side additions won't collide
+    nextCustId = customers.length ? Math.max(...customers.map(c => c.id || 0)) + 1 : 1;
+    nextJobId = jobs.length ? Math.max(...jobs.map(j => j.id || 0)) + 1 : 1;
+    nextReminderId = reminders.length ? Math.max(...reminders.map(r => r.id || 0)) + 1 : 1;
+    nextTaskId = tasks.length ? Math.max(...tasks.map(t => t.id || 0)) + 1 : 1;
+
+    // re-render UI now that data is populated
+    try { updateLocUI(); } catch(e) { /* ignore if called before DOM ready */ }
+    try { showView(currentView || 'dashboard'); } catch(e) { /* ignore if called before DOM ready */ }
+  } catch (err) {
+    console.error('loadData error', err);
+    if (typeof toast === 'function') toast('Error loading data from server');
+  }
 }
