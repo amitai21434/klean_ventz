@@ -6,6 +6,7 @@ const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
 
 let SERVICES = [];
 let PRODUCTS = [];
+let LEAD_SOURCE_ROWS = [];
 
 function jobCost(j){let t=0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.cost||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.cost||0;});return t;}
 function jobCharge(j){let t=j.surchargeAmt||0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.price||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.price||0;});return t;}
@@ -148,8 +149,8 @@ let activeLoc='nj';
 const STORE={};
 const LOCATIONS={nj:{name:'New Jersey',sub:'Residential \u00b7 New Jersey'},mw:{name:'Midwest',sub:'Commercial / Healthcare \u00b7 Midwest'}};
 
-function snapshotLoc(loc){STORE[loc]={customers,jobs,reminders,tasks,SERVICES,PRODUCTS,LEAD_SOURCES,nextCustId,nextJobId,nextReminderId,nextTaskId};}
-function applyLoc(loc){const d=STORE[loc];customers=d.customers;jobs=d.jobs;reminders=d.reminders;tasks=d.tasks;SERVICES=d.SERVICES;PRODUCTS=d.PRODUCTS;LEAD_SOURCES=d.LEAD_SOURCES;nextCustId=d.nextCustId;nextJobId=d.nextJobId;nextReminderId=d.nextReminderId;nextTaskId=d.nextTaskId;}
+function snapshotLoc(loc){STORE[loc]={customers,jobs,reminders,tasks,SERVICES,PRODUCTS,LEAD_SOURCES,LEAD_SOURCE_ROWS,nextCustId,nextJobId,nextReminderId,nextTaskId};}
+function applyLoc(loc){const d=STORE[loc];customers=d.customers;jobs=d.jobs;reminders=d.reminders;tasks=d.tasks;SERVICES=d.SERVICES;PRODUCTS=d.PRODUCTS;LEAD_SOURCES=d.LEAD_SOURCES;LEAD_SOURCE_ROWS=d.LEAD_SOURCE_ROWS||LEAD_SOURCES.map((name,i)=>({id:'demo-'+i,name}));nextCustId=d.nextCustId;nextJobId=d.nextJobId;nextReminderId=d.nextReminderId;nextTaskId=d.nextTaskId;}
 function switchLocation(loc){if(loc===activeLoc)return;snapshotLoc(activeLoc);activeLoc=loc;applyLoc(loc);updateLocUI();showView(currentView);}
 function updateLocUI(){const m=LOCATIONS[activeLoc];const s=document.getElementById('brand-sub');if(s)s.textContent=m.sub;const sel=document.getElementById('loc-select');if(sel)sel.value=activeLoc;}
 
@@ -190,7 +191,7 @@ function buildMidwest(){
     {id:3,text:'Order commercial HEPA filters \u2014 running low',date:dOff(-1),time:'',customerId:null,done:false},
   ];
   let mwNextJob=seedSourceHistory(cust,jb,SVC,PRD,6,MW_LS_WEIGHTS,'mw');
-  STORE.mw={customers:cust,jobs:jb,reminders:rem,tasks:mwTasks,SERVICES:SVC,PRODUCTS:PRD,LEAD_SOURCES:LEADS,nextCustId:6,nextJobId:mwNextJob,nextReminderId:2,nextTaskId:4};
+  STORE.mw={customers:cust,jobs:jb,reminders:rem,tasks:mwTasks,SERVICES:SVC,PRODUCTS:PRD,LEAD_SOURCES:LEADS,LEAD_SOURCE_ROWS:LEADS.map((name,i)=>({id:'mw-'+i,name})),nextCustId:6,nextJobId:mwNextJob,nextReminderId:2,nextTaskId:4};
 }
 
 /* ---- name / lookup helpers ---- */
@@ -323,13 +324,14 @@ async function loadData(baseUrl = '/api') {
       fetch(baseUrl + '/products'),
       fetch(baseUrl + '/tasks'),
       fetch(baseUrl + '/reminders'),
+      fetch(baseUrl + '/lead-sources'),
     ];
-    const [custRes, jobsRes, svcRes, prdRes, tasksRes, remRes] = await Promise.all(endpoints);
-    if (!custRes.ok || !jobsRes.ok || !svcRes.ok || !prdRes.ok || !tasksRes.ok || !remRes.ok) {
+    const [custRes, jobsRes, svcRes, prdRes, tasksRes, remRes, leadRes] = await Promise.all(endpoints);
+    if (!custRes.ok || !jobsRes.ok || !svcRes.ok || !prdRes.ok || !tasksRes.ok || !remRes.ok || !leadRes.ok) {
       throw new Error('One or more API requests failed');
     }
-    const [custJson, jobsJson, svcJson, prdJson, tasksJson, remJson] = await Promise.all([
-      custRes.json(), jobsRes.json(), svcRes.json(), prdRes.json(), tasksRes.json(), remRes.json()
+    const [custJson, jobsJson, svcJson, prdJson, tasksJson, remJson, leadJson] = await Promise.all([
+      custRes.json(), jobsRes.json(), svcRes.json(), prdRes.json(), tasksRes.json(), remRes.json(), leadRes.json()
     ]);
 
     // assign to the app globals (note: uppercase SERVICES/PRODUCTS used elsewhere)
@@ -339,6 +341,8 @@ async function loadData(baseUrl = '/api') {
     PRODUCTS = Array.isArray(prdJson) ? prdJson : (prdJson.products || []);
     tasks = Array.isArray(tasksJson) ? tasksJson : (tasksJson.tasks || []);
     reminders = Array.isArray(remJson) ? remJson : (remJson.reminders || []);
+    LEAD_SOURCE_ROWS = Array.isArray(leadJson) ? leadJson : (leadJson.leadSources || []);
+    LEAD_SOURCES = LEAD_SOURCE_ROWS.map(s => s.name).filter(Boolean);
 
     // recalc next ids so client-side additions won't collide
     nextCustId = customers.length ? Math.max(...customers.map(c => c.id || 0)) + 1 : 1;

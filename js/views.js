@@ -327,7 +327,44 @@ function renderSettings(){
     </div>
   </div>`;
 }
+function leadSourceFirstReturned(json){return Array.isArray(json)?json[0]:json;}
+function replaceLeadSourceRow(row){
+  const idx=LEAD_SOURCE_ROWS.findIndex(x=>String(x.id)===String(row.id));
+  if(idx>=0)LEAD_SOURCE_ROWS[idx]=row;
+  else LEAD_SOURCE_ROWS.push(row);
+  LEAD_SOURCE_ROWS.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  LEAD_SOURCES=LEAD_SOURCE_ROWS.map(x=>x.name).filter(Boolean);
+}
+async function createLeadSource(name){
+  const existing=LEAD_SOURCE_ROWS.find(x=>(x.name||'').toLowerCase()===name.toLowerCase());
+  if(existing)return existing;
+  const resp=await fetch('/api/lead-sources',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create lead source failed');}
+  const created=leadSourceFirstReturned(await resp.json());
+  if(!created)throw new Error('No lead source returned');
+  replaceLeadSourceRow(created);
+  return created;
+}
 function leadRow(s){return `<div class="lead-chip"><span>${s}</span><i class="ti ti-x" onclick="removeLeadSource('${s.replace(/'/g,"\\'")}')"></i></div>`;}
-function addLeadSource(){const inp=document.getElementById('new-lead-source');const val=inp.value.trim();if(!val)return;if(!LEAD_SOURCES.includes(val))LEAD_SOURCES.push(val);inp.value='';refreshLeadSourceList();toast('Lead source added');}
-function removeLeadSource(s){LEAD_SOURCES=LEAD_SOURCES.filter(x=>x!==s);refreshLeadSourceList();}
+async function addLeadSource(){
+  const inp=document.getElementById('new-lead-source');const val=inp.value.trim();if(!val)return;
+  try{
+    await createLeadSource(val);
+    inp.value='';refreshLeadSourceList();toast('Lead source added');
+  }catch(err){console.error('addLeadSource error',err);toast('Error adding lead source');}
+}
+async function removeLeadSource(s){
+  const row=LEAD_SOURCE_ROWS.find(x=>x.name===s);
+  try{
+    if(row){
+      const resp=await fetch(`/api/lead-sources/${row.id}`,{method:'DELETE'});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete lead source failed');}
+      LEAD_SOURCE_ROWS=LEAD_SOURCE_ROWS.filter(x=>String(x.id)!==String(row.id));
+    }else{
+      LEAD_SOURCE_ROWS=LEAD_SOURCE_ROWS.filter(x=>x.name!==s);
+    }
+    LEAD_SOURCES=LEAD_SOURCES.filter(x=>x!==s);
+    refreshLeadSourceList();toast('Lead source removed');
+  }catch(err){console.error('removeLeadSource error',err);toast('Error removing lead source');}
+}
 function refreshLeadSourceList(){const list=document.getElementById('lead-source-list');if(list)list.innerHTML=LEAD_SOURCES.map(leadRow).join('');}

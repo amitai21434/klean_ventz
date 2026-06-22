@@ -22,15 +22,73 @@ function openLogOutcome(custId,reminderId){
     <div style="margin-top:10px;text-align:center"><button class="btn btn-sm btn-ghost" onclick="logDismiss(${custId},${reminderId||'null'})">Dismiss for now</button></div>
   </div>`);
 }
-function upsertReminder(custId,dueDate,reason,reminderId){
-  if(reminderId){const r=reminders.find(x=>x.id===reminderId);if(r){r.dueDate=dueDate;r.reason=reason;return;}}
-  const existing=reminders.find(x=>x.customerId===custId);
-  if(existing){existing.dueDate=dueDate;existing.reason=reason;}
-  else reminders.push({id:nextReminderId++,customerId:custId,dueDate,reason});
+function reminderFirstReturned(json){return Array.isArray(json)?json[0]:json;}
+function replaceReminder(updated){
+  const idx=reminders.findIndex(r=>String(r.id)===String(updated.id));
+  if(idx>=0)reminders[idx]=updated;
+  else reminders.push(updated);
+  nextReminderId=Math.max(nextReminderId,(updated.id||0)+1);
 }
-function logNoAnswer(custId,reminderId){upsertReminder(custId,addDays(dOff(0),7),'Left voicemail \u2014 follow up',reminderId);const c=customers.find(x=>x.id===custId);if(c)c.snoozeUntil='';closeModal();toast('Follow-up set for '+fmtDate(addDays(dOff(0),7)));showView('dashboard');}
-function logCallback(custId,reminderId){const d=document.getElementById('cb-date').value;if(!d)return toast('Pick a date');upsertReminder(custId,d,'Callback \u2014 customer requested',reminderId);const c=customers.find(x=>x.id===custId);if(c)c.snoozeUntil='';closeModal();toast('Callback reminder set for '+fmtDate(d));showView('dashboard');}
-function logDismiss(custId,reminderId){if(reminderId){reminders=reminders.filter(r=>r.id!==reminderId);}else{const c=customers.find(x=>x.id===custId);if(c)c.snoozeUntil=addDays(dOff(0),30);}closeModal();toast('Dismissed');showView('dashboard');}
+function customerFirstReturned(json){return Array.isArray(json)?json[0]:json;}
+async function updateCustomerFields(cust,fields){
+  if(!cust)return null;
+  const resp=await fetch(`/api/customers/${cust.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)});
+  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Customer save failed');}
+  const updated=customerFirstReturned(await resp.json());
+  if(updated)Object.assign(cust,updated);
+  else Object.assign(cust,fields);
+  return cust;
+}
+async function clearCustomerReminders(customerId){
+  const existing=reminders.filter(r=>String(r.customerId)===String(customerId));
+  await Promise.all(existing.map(async r=>{
+    const resp=await fetch(`/api/reminders/${r.id}`,{method:'DELETE'});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
+  }));
+  reminders=reminders.filter(r=>String(r.customerId)!==String(customerId));
+}
+async function upsertReminder(custId,dueDate,reason,reminderId){
+  const existing=reminderId
+    ? reminders.find(x=>String(x.id)===String(reminderId))
+    : reminders.find(x=>String(x.customerId)===String(custId));
+  const payload={customerId:custId,dueDate,reason};
+  const url=existing?`/api/reminders/${existing.id}`:'/api/reminders';
+  const method=existing?'PUT':'POST';
+  const resp=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder save failed');}
+  const saved=reminderFirstReturned(await resp.json());
+  if(!saved)throw new Error('No reminder returned');
+  replaceReminder(saved);
+  return saved;
+}
+async function logNoAnswer(custId,reminderId){
+  const due=addDays(dOff(0),7);
+  try{
+    await upsertReminder(custId,due,'Left voicemail - follow up',reminderId);
+    const c=customers.find(x=>x.id===custId);if(c)await updateCustomerFields(c,{snoozeUntil:null});
+    closeModal();toast('Follow-up set for '+fmtDate(due));showView('dashboard');
+  }catch(err){console.error('logNoAnswer error',err);toast('Error saving reminder');}
+}
+async function logCallback(custId,reminderId){
+  const d=document.getElementById('cb-date').value;if(!d)return toast('Pick a date');
+  try{
+    await upsertReminder(custId,d,'Callback - customer requested',reminderId);
+    const c=customers.find(x=>x.id===custId);if(c)await updateCustomerFields(c,{snoozeUntil:null});
+    closeModal();toast('Callback reminder set for '+fmtDate(d));showView('dashboard');
+  }catch(err){console.error('logCallback error',err);toast('Error saving reminder');}
+}
+async function logDismiss(custId,reminderId){
+  try{
+    if(reminderId){
+      const resp=await fetch(`/api/reminders/${reminderId}`,{method:'DELETE'});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
+      reminders=reminders.filter(r=>String(r.id)!==String(reminderId));
+    }else{
+      const c=customers.find(x=>x.id===custId);if(c)await updateCustomerFields(c,{snoozeUntil:addDays(dOff(0),30)});
+    }
+    closeModal();toast('Dismissed');showView('dashboard');
+  }catch(err){console.error('logDismiss error',err);toast('Error dismissing reminder');}
+}
 
 /* ---------------------------------------------------------- NEW CUSTOMER */
 /* ---------- searchable multi-select (lead sources) ---------- */
@@ -47,9 +105,26 @@ function msBlur(id){setTimeout(()=>{if(MS[id]){MS[id].open=false;MS[id].q='';msP
 function msType(id,v){MS[id].q=v;MS[id].open=true;msPaintDrop(id);}
 function msAdd(id,v){const st=MS[id];if(!st.sel.includes(v))st.sel.push(v);st.q='';st.open=true;msPaintCtl(id);msPaintDrop(id);msFocus(id);msSync(id);}
 function msRemove(id,v){const st=MS[id];st.sel=st.sel.filter(x=>x!==v);msPaintCtl(id);msPaintDrop(id);msFocus(id);msSync(id);}
-function msCreate(id){const st=MS[id];const v=st.q.trim();if(!v)return;if(!LEAD_SOURCES.includes(v))LEAD_SOURCES.push(v);if(!st.sel.includes(v))st.sel.push(v);st.q='';msPaintCtl(id);msPaintDrop(id);msFocus(id);msSync(id);}
+async function msCreate(id){
+  const st=MS[id];const v=st.q.trim();if(!v)return;
+  try{
+    const row=await createLeadSource(v);
+    const name=row.name||v;
+    if(!st.sel.includes(name))st.sel.push(name);
+    st.q='';msPaintCtl(id);msPaintDrop(id);msFocus(id);msSync(id);
+  }catch(err){console.error('msCreate error',err);toast('Error adding lead source');}
+}
 function msGet(id){return MS[id]?MS[id].sel.slice():[];}
-function msSync(id){const st=MS[id];if(st&&st.cust){const c=customers.find(x=>x.id===st.cust);if(c)c.leadSources=st.sel.slice();}}
+function msSync(id){
+  const st=MS[id];
+  if(st&&st.cust){
+    const c=customers.find(x=>x.id===st.cust);
+    if(c){
+      c.leadSources=st.sel.slice();
+      updateCustomerFields(c,{leadSources:c.leadSources}).catch(err=>{console.error('msSync error',err);toast('Error saving lead sources');});
+    }
+  }
+}
 
 function openNewCustomer(){
   showModal(`${headX('New customer','Add someone to the books')}
@@ -245,8 +320,8 @@ function saveJob(){
       if(created){
         jobs.push(created);
         nextJobId = Math.max(nextJobId, (created.id||0)+1);
-        reminders=reminders.filter(r=>r.customerId!==custId);
-        cust.snoozeUntil=null;
+        await clearCustomerReminders(custId);
+        await updateCustomerFields(cust,{snoozeUntil:null});
         closeModal();toast('Job booked');
         showView('jobs');
       }else{throw new Error('No job returned');}
@@ -359,8 +434,17 @@ async function completeJob(id){
     if(!updated)throw new Error('No job returned');
     Object.assign(j,updated);
     const cust=customers.find(c=>c.id===j.customerId);
-    if(cust){cust.lastService=j.date;cust.jobs=(cust.jobs||0)+1;cust.snoozeUntil='';cust.nextServiceMonths=j.nextServiceMonths;const nd=new Date(j.date);nd.setMonth(nd.getMonth()+j.nextServiceMonths);cust.nextDue=nd.toISOString().slice(0,10);}
-    reminders=reminders.filter(r=>r.customerId!==j.customerId);
+    if(cust){
+      const nd=new Date(j.date);nd.setMonth(nd.getMonth()+j.nextServiceMonths);
+      await updateCustomerFields(cust,{
+        lastService:j.date,
+        jobs:(cust.jobs||0)+1,
+        snoozeUntil:null,
+        nextServiceMonths:j.nextServiceMonths,
+        nextDue:nd.toISOString().slice(0,10)
+      });
+    }
+    await clearCustomerReminders(j.customerId);
     closeModal();toast(selectedPayment&&selectedPayment!=='Invoice'?'Complete - Receipt & review request sent':'Complete - Invoice & review request sent');showView('jobs');
   }catch(err){console.error('completeJob error',err);toast('Error completing job');}
 }
