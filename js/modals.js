@@ -345,14 +345,67 @@ async function sendJobEmail(path,job,cust){
 }
 
 /* ---------------------------------------------------------- SCHEDULE JOB */
+function sjCustMatches(q){
+  const s=q.toLowerCase().trim();
+  if(!s)return customers.slice(0,8);
+  return customers.filter(c=>(nameOf(c)+' '+(c.phone||'')+' '+(c.contactName||'')).toLowerCase().includes(s)).slice(0,8);
+}
+function sjCustDropHtml(){
+  if(!SJ_CUST.open)return '';
+  const matches=sjCustMatches(SJ_CUST.q);
+  if(!matches.length)return `<div class="ms-drop"><div class="ms-empty">No matching customers</div></div>`;
+  return `<div class="ms-drop">${matches.map(c=>`<div class="ms-opt" onmousedown="event.preventDefault();sjSelectCust(${c.id})"><div style="font-weight:600">${tEsc(nameOf(c))}${c.isCompany&&c.contactName?' <span class="cell-sub" style="font-weight:400">\u00b7 '+tEsc(c.contactName)+'</span>':''}</div><div class="cell-sub">${tEsc(c.phone||'')}${c.address?' \u00b7 '+tEsc(c.address):''}</div></div>`).join('')}</div>`;
+}
+function sjCustPaintDrop(){const el=document.getElementById('sj-cust-drop');if(el)el.innerHTML=sjCustDropHtml();}
+function sjCustType(v){SJ_CUST.q=v;SJ_CUST.id=null;SJ_CUST.open=true;sjCustPaintDrop();renderSjCustInfo();}
+function sjCustOpen(){SJ_CUST.open=true;sjCustPaintDrop();}
+function sjCustBlur(){setTimeout(()=>{SJ_CUST.open=false;sjCustPaintDrop();},160);}
+function sjSelectCust(id){
+  const c=customers.find(x=>x.id===id);
+  SJ_CUST={id,q:c?nameOf(c):'',open:false};
+  const inp=document.getElementById('sj-cust-search');if(inp)inp.value=SJ_CUST.q;
+  sjCustPaintDrop();
+  renderSjCustInfo();
+}
+function renderSjCustInfo(){
+  const el=document.getElementById('sj-cust-info');if(!el)return;
+  const c=customers.find(x=>x.id===SJ_CUST.id);
+  if(!c){el.innerHTML='';return;}
+  const cJobs=jobs.filter(j=>j.customerId===c.id).sort((a,b)=>a.date>b.date?-1:1);
+  el.innerHTML=`<div class="callout callout-ink" style="margin-top:10px;align-items:flex-start">
+    <i class="ti ti-user-check"></i>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:700;color:var(--ink-900)">${tEsc(nameOf(c))}${c.isCompany&&c.contactName?' <span class="cell-sub">\u00b7 '+tEsc(c.contactName)+'</span>':''}</div>
+      <div class="cell-sub" style="margin-top:2px">${tEsc(c.phone||'\u2014')}${c.phone2?' \u00b7 '+tEsc(c.phone2):''}</div>
+      <div class="cell-sub">${tEsc(c.address||'No address on file')}</div>
+      ${c.email?`<div class="cell-sub">${tEsc(c.email)}</div>`:''}
+      ${c.nextDue?`<div class="cell-sub" style="margin-top:4px">Next due ${fmtDate(c.nextDue)}</div>`:''}
+      <div style="margin-top:8px;font-weight:600;font-size:12.5px;color:var(--ink-900)">Service history${cJobs.length?` (${cJobs.length})`:''}</div>
+      ${cJobs.length?cJobs.slice(0,5).map(j=>`<div class="cell-sub" style="margin-top:2px">${fmtDate(j.date)} \u00b7 ${j.services.map(svcName).join(', ')||'\u2014'} \u00b7 ${j.status}</div>`).join(''):'<div class="cell-sub">No previous jobs</div>'}
+    </div>
+  </div>`;
+}
+function sjSetDuration(h,btn){SJ_DURATION=h;btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function csSetDuration(h,btn){CS_DURATION=h;btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function durationButtons(active,onclickName){return [2,3,4].map(h=>`<button type="button" class="${active===h?'on':''}" onclick="${onclickName}(${h},this)">${h} hr</button>`).join('');}
 function openScheduleJob(prefillId){
-  const custOpts=customers.map(c=>`<option value="${c.id}" ${prefillId===c.id?'selected':''}>${nameOf(c)}${c.isCompany&&c.contactName?' ('+c.contactName+')':''}</option>`).join('');
   const pre=prefillId?customers.find(c=>c.id===prefillId):null;
+  SJ_CUST={id:prefillId||null,q:pre?nameOf(pre):'',open:false};
+  SJ_DURATION=2;
   const preServ=pre?pre.serviceRequested||[]:[];
   showModal(`${headX('Schedule job',pre?'For '+nameOf(pre):'Book a new appointment')}
   <div class="sheet-body">
-    <div class="field"><label>Customer</label><select id="sj-cust"><option value="">\u2014 select \u2014</option>${custOpts}</select><div style="margin-top:6px"><span class="hint">Not on the books? <span style="color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline" onclick="closeModal();openNewCustomer()">Add a new customer \u2197</span></span></div></div>
-    <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}"></div><div class="field" style="margin:0"><label>Start time <span class="optional-tag">2-hr slot</span></label><input type="time" id="sj-time" value="10:00"></div></div>
+    <div class="field">
+      <label>Customer</label>
+      <div class="ms" id="sj-custpick">
+        <div class="ms-control"><input type="text" id="sj-cust-search" class="ms-input" style="width:100%" placeholder="Search by name or phone\u2026" autocomplete="off" value="${pre?tAttr(nameOf(pre)):''}" oninput="sjCustType(this.value)" onfocus="sjCustOpen()" onblur="sjCustBlur()"></div>
+        <div id="sj-cust-drop"></div>
+      </div>
+      <div id="sj-cust-info"></div>
+      <div style="margin-top:6px"><span class="hint">Not on the books? <span style="color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline" onclick="closeModal();openNewCustomer()">Add a new customer \u2197</span></span></div>
+    </div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}"></div><div class="field" style="margin:0"><label>Start time</label><input type="time" id="sj-time" value="10:00"></div></div>
+    <div class="field"><label>Job length</label><div class="segmented" id="sj-duration">${durationButtons(2,'sjSetDuration')}</div></div>
     <div class="section-title">Services</div>
     ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''}><label for="svc-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
     <div class="surcharge-box"><input type="checkbox" id="sj-surcharge"><label>Above 2nd floor surcharge</label><input type="number" id="sj-surcharge-amt" placeholder="$0"></div>
@@ -362,11 +415,12 @@ function openScheduleJob(prefillId){
     <div class="field" style="margin:0"><textarea id="sj-notes" placeholder="Access notes, customer requests\u2026">${pre?pre.notes||'':''}</textarea></div>
   </div>
   <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob()"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
+  renderSjCustInfo();
 }
 function openScheduleJobForCustomer(id){openScheduleJob(id);}
 function saveJob(){
   (async function(){
-    const custId=parseInt(document.getElementById('sj-cust').value);
+    const custId=SJ_CUST.id;
     if(!custId)return toast('Please select a customer');
     const cust=customers.find(c=>c.id===custId);
     const services=SERVICES.filter(s=>document.getElementById('svc-'+s.id)?.checked).map(s=>s.id);
@@ -377,6 +431,7 @@ function saveJob(){
       customerName: nameOf(cust),
       date: document.getElementById('sj-date').value,
       time: document.getElementById('sj-time').value,
+      durationHours: SJ_DURATION,
       status: 'scheduled',
       services: services,
       products: products,
@@ -412,10 +467,12 @@ function openJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;if(j.status===
 
 function openCompleteJob(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;selectedPayment=j.payment||'';
+  CS_DURATION=j.durationHours||2;
   const cc=customers.find(x=>x.id===j.customerId)||{};
   showModal(`${headX('Complete job',nameOf(cc))}
   <div class="sheet-body">
     <div class="callout callout-green" style="margin-bottom:14px"><i class="ti ti-calendar-check"></i><div><strong>${fmtDate(j.date)} at ${fmtTime(j.time)}</strong><div style="color:var(--ink-500);margin-top:1px"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${cc.address||'No address on file'}${cc.phone?' \u00b7 '+cc.phone:''}</div></div></div>
+    <div class="field"><label>Job length</label><div class="segmented" id="cs-duration">${durationButtons(j.durationHours||2,'csSetDuration')}</div></div>
     <div class="section-title">Services performed</div>
     ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${j.services.includes(s.id)?'checked':''} onchange="recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
     <div class="surcharge-box"><input type="checkbox" id="cs-surcharge" ${j.surcharge?'checked':''} onchange="recalcCompleteTotal()"><label>Above 2nd floor surcharge</label><input type="number" id="cs-surcharge-amt" value="${j.surchargeAmt||''}" placeholder="$0" oninput="recalcCompleteTotal()"></div>
@@ -456,6 +513,7 @@ function hydrateJobModal(j){
   const pf=document.getElementById('cs-photos');
   if(pf && pf.files && pf.files.length) j.photos=Array.from(pf.files).map(f=>f.name);
   j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;
+  j.durationHours=CS_DURATION;
 }
 async function saveJobEdits(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
@@ -472,6 +530,7 @@ async function saveJobEdits(id){
     techNotes:j.techNotes,
     photos:j.photos,
     nextServiceMonths:j.nextServiceMonths,
+    durationHours:j.durationHours,
     status:j.status
   };
   try{
@@ -502,6 +561,7 @@ async function completeJob(id){
     techNotes:j.techNotes,
     photos:j.photos,
     nextServiceMonths:j.nextServiceMonths,
+    durationHours:j.durationHours,
     status:j.status
   };
   try{
