@@ -3,6 +3,8 @@
    ============================================================ */
 const LOGO_SRC='assets/logo.jpg';
 const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
+const API_BASE='https://tactile-pointless-landlady.ngrok-free.dev';
+const NGROK_HEADERS={'ngrok-skip-browser-warning':'true'};
 
 let SERVICES = [];
 let PRODUCTS = [];
@@ -319,16 +321,16 @@ function seedSourceHistory(custArr,jobsArr,svcArr,prdArr,startId,weights,tag){
   if(tag!=='mw')nextCustId=Math.max(nextCustId,cid);
   return id;
 }
-async function loadData(baseUrl = '/api') {
+async function loadData(baseUrl = API_BASE + '/api') {
   try {
     const endpoints = [
-      fetch(baseUrl + '/customers'),
-      fetch(baseUrl + '/jobs'),
-      fetch(baseUrl + '/services'),
-      fetch(baseUrl + '/products'),
-      fetch(baseUrl + '/tasks'),
-      fetch(baseUrl + '/reminders'),
-      fetch(baseUrl + '/lead-sources'),
+      fetch(baseUrl + '/customers',{headers:NGROK_HEADERS}),
+      fetch(baseUrl + '/jobs',{headers:NGROK_HEADERS}),
+      fetch(baseUrl + '/services',{headers:NGROK_HEADERS}),
+      fetch(baseUrl + '/products',{headers:NGROK_HEADERS}),
+      fetch(baseUrl + '/tasks',{headers:NGROK_HEADERS}),
+      fetch(baseUrl + '/reminders',{headers:NGROK_HEADERS}),
+      fetch(baseUrl + '/lead-sources',{headers:NGROK_HEADERS}),
     ];
     const [custRes, jobsRes, svcRes, prdRes, tasksRes, remRes, leadRes] = await Promise.all(endpoints);
     if (!custRes.ok || !jobsRes.ok || !svcRes.ok || !prdRes.ok || !tasksRes.ok || !remRes.ok || !leadRes.ok) {

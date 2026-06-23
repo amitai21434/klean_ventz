@@ -32,7 +32,7 @@ function replaceReminder(updated){
 function customerFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 async function updateCustomerFields(cust,fields){
   if(!cust)return null;
-  const resp=await fetch(`/api/customers/${cust.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)});
+  const resp=await fetch(`${API_BASE}/api/customers/${cust.id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(fields)});
   if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Customer save failed');}
   const updated=customerFirstReturned(await resp.json());
   if(updated)Object.assign(cust,updated);
@@ -42,7 +42,7 @@ async function updateCustomerFields(cust,fields){
 async function clearCustomerReminders(customerId){
   const existing=reminders.filter(r=>String(r.customerId)===String(customerId));
   await Promise.all(existing.map(async r=>{
-    const resp=await fetch(`/api/reminders/${r.id}`,{method:'DELETE'});
+    const resp=await fetch(`${API_BASE}/api/reminders/${r.id}`,{method:'DELETE',headers:NGROK_HEADERS});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
   }));
   reminders=reminders.filter(r=>String(r.customerId)!==String(customerId));
@@ -52,9 +52,9 @@ async function upsertReminder(custId,dueDate,reason,reminderId){
     ? reminders.find(x=>String(x.id)===String(reminderId))
     : reminders.find(x=>String(x.customerId)===String(custId));
   const payload={customerId:custId,dueDate,reason,location:activeLoc};
-  const url=existing?`/api/reminders/${existing.id}`:'/api/reminders';
+  const url=existing?`${API_BASE}/api/reminders/${existing.id}`:API_BASE+'/api/reminders';
   const method=existing?'PUT':'POST';
-  const resp=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const resp=await fetch(url,{method,headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
   if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder save failed');}
   const saved=reminderFirstReturned(await resp.json());
   if(!saved)throw new Error('No reminder returned');
@@ -80,7 +80,7 @@ async function logCallback(custId,reminderId){
 async function logDismiss(custId,reminderId){
   try{
     if(reminderId){
-      const resp=await fetch(`/api/reminders/${reminderId}`,{method:'DELETE'});
+      const resp=await fetch(`${API_BASE}/api/reminders/${reminderId}`,{method:'DELETE',headers:NGROK_HEADERS});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
       reminders=reminders.filter(r=>String(r.id)!==String(reminderId));
     }else{
@@ -159,7 +159,7 @@ async function loadGooglePlaces(){
       return googleAutocompleteService;
     }
     const {data:{session}}=await supabaseBrowser.auth.getSession();
-    const cfgResp=await fetch('/api/config/maps',{headers:{'Authorization':'Bearer '+session.access_token}});
+    const cfgResp=await fetch(API_BASE+'/api/config/maps',{headers:{...NGROK_HEADERS,'Authorization':'Bearer '+session.access_token}});
     if(!cfgResp.ok)return null;
     const cfg=await cfgResp.json();
     if(!cfg.enabled||!cfg.apiKey)return null;
@@ -231,7 +231,7 @@ function saveNewCustomer(){
       location: activeLoc
     };
     try{
-      const resp=await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await fetch(API_BASE+'/api/customers',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
       const json=await resp.json();
       const created = Array.isArray(json)?json[0]:json;
@@ -269,7 +269,7 @@ function saveNewCustomerAndBook(){
       location: activeLoc
     };
     try{
-      const resp=await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await fetch(API_BASE+'/api/customers',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
       const json=await resp.json();
       const created = Array.isArray(json)?json[0]:json;
@@ -320,7 +320,7 @@ function updateCust(id,field,val){
     const payload={};
     payload[field]=val;
     try{
-      const resp=await fetch(`/api/customers/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await fetch(`${API_BASE}/api/customers/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();console.error('Update failed',txt);toast('Error saving');}
     }catch(err){console.error('updateCust error',err);toast('Error saving');}
   })();
@@ -338,7 +338,7 @@ async function sendJobEmail(path,job,cust){
   if(!cust||!cust.email)return false;
   try{
     const {data:{session}}=await supabaseBrowser.auth.getSession();
-    const resp=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(emailJobPayload(job,cust))});
+    const resp=await fetch(path,{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(emailJobPayload(job,cust))});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Email failed');}
     return true;
   }catch(err){console.error('sendJobEmail error',err);return false;}
@@ -390,7 +390,7 @@ function saveJob(){
       location: activeLoc
     };
     try{
-      const resp=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await fetch(API_BASE+'/api/jobs',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
       const json=await resp.json();
       const created = Array.isArray(json)?json[0]:json;
@@ -399,7 +399,7 @@ function saveJob(){
         nextJobId = Math.max(nextJobId, (created.id||0)+1);
         await clearCustomerReminders(custId);
         await updateCustomerFields(cust,{snoozeUntil:null});
-        const emailSent=await sendJobEmail('/api/emails/job-confirmation',created,cust);
+        const emailSent=await sendJobEmail(API_BASE+'/api/emails/job-confirmation',created,cust);
         closeModal();toast(emailSent?'Job booked - confirmation sent':'Job booked');
         showView('jobs');
       }else{throw new Error('No job returned');}
@@ -475,7 +475,7 @@ async function saveJobEdits(id){
     status:j.status
   };
   try{
-    const resp=await fetch(`/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
     const json=await resp.json();
     const updated=Array.isArray(json)?json[0]:json;
@@ -505,7 +505,7 @@ async function completeJob(id){
     status:j.status
   };
   try{
-    const resp=await fetch(`/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Complete failed');}
     const json=await resp.json();
     const updated=Array.isArray(json)?json[0]:json;
@@ -523,7 +523,7 @@ async function completeJob(id){
       });
     }
     await clearCustomerReminders(j.customerId);
-    const emailSent=await sendJobEmail('/api/emails/job-completed',j,cust);
+    const emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
     closeModal();toast(emailSent?(selectedPayment&&selectedPayment!=='Invoice'?'Complete - receipt & review sent':'Complete - invoice & review sent'):'Complete - email not sent');showView('jobs');
   }catch(err){console.error('completeJob error',err);toast('Error completing job');}
 }

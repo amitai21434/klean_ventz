@@ -255,7 +255,7 @@ function catalogRow(type,it){
   </div>`;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
-function catalogEndpoint(type){return type==='service'?'/api/services':'/api/products';}
+function catalogEndpoint(type){return type==='service'?API_BASE+'/api/services':API_BASE+'/api/products';}
 function catalogFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 function replaceCatalogItem(type,item){
   const arr=catalogList(type);
@@ -269,7 +269,7 @@ async function updateCatalog(type,id,field,val){
   try{
     const payload={name:it.name,price:it.price||0,cost:it.cost||0};
     payload[field]=val;
-    const resp=await fetch(`${catalogEndpoint(type)}/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const resp=await fetch(`${catalogEndpoint(type)}/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update failed');}
     const updated=catalogFirstReturned(await resp.json());
     if(!updated)throw new Error('No item returned');
@@ -279,7 +279,7 @@ async function updateCatalog(type,id,field,val){
 }
 async function deleteCatalog(type,id){
   try{
-    const resp=await fetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE'});
+    const resp=await fetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE',headers:NGROK_HEADERS});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
     if(type==='service')SERVICES=SERVICES.filter(x=>String(x.id)!==String(id));
     else PRODUCTS=PRODUCTS.filter(x=>String(x.id)!==String(id));
@@ -289,7 +289,7 @@ async function deleteCatalog(type,id){
 async function addCatalogItem(type){
   const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,location:activeLoc};
   try{
-    const resp=await fetch(catalogEndpoint(type),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const resp=await fetch(catalogEndpoint(type),{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
     const created=catalogFirstReturned(await resp.json());
     if(!created)throw new Error('No item returned');
@@ -373,7 +373,7 @@ async function createCrmUser(){
   if(!email||!password)return toast('Enter email and temporary password');
   try{
     const {data:{session}}=await supabaseBrowser.auth.getSession();
-    const resp=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({email,password,role,name})});
+    const resp=await fetch(API_BASE+'/api/users',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({email,password,role,name})});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create user failed');}
     document.getElementById('new-user-name').value='';
     document.getElementById('new-user-email').value='';
@@ -392,7 +392,7 @@ function replaceLeadSourceRow(row){
 async function createLeadSource(name){
   const existing=LEAD_SOURCE_ROWS.find(x=>(x.name||'').toLowerCase()===name.toLowerCase());
   if(existing)return existing;
-  const resp=await fetch('/api/lead-sources',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+  const resp=await fetch(API_BASE+'/api/lead-sources',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify({name})});
   if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create lead source failed');}
   const created=leadSourceFirstReturned(await resp.json());
   if(!created)throw new Error('No lead source returned');
@@ -411,7 +411,7 @@ async function removeLeadSource(s){
   const row=LEAD_SOURCE_ROWS.find(x=>x.name===s);
   try{
     if(row){
-      const resp=await fetch(`/api/lead-sources/${row.id}`,{method:'DELETE'});
+      const resp=await fetch(`${API_BASE}/api/lead-sources/${row.id}`,{method:'DELETE',headers:NGROK_HEADERS});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete lead source failed');}
       LEAD_SOURCE_ROWS=LEAD_SOURCE_ROWS.filter(x=>String(x.id)!==String(row.id));
     }else{
