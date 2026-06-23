@@ -51,7 +51,7 @@ async function upsertReminder(custId,dueDate,reason,reminderId){
   const existing=reminderId
     ? reminders.find(x=>String(x.id)===String(reminderId))
     : reminders.find(x=>String(x.customerId)===String(custId));
-  const payload={customerId:custId,dueDate,reason};
+  const payload={customerId:custId,dueDate,reason,location:activeLoc};
   const url=existing?`/api/reminders/${existing.id}`:'/api/reminders';
   const method=existing?'PUT':'POST';
   const resp=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -147,7 +147,63 @@ function openNewCustomer(){
   </div>
   <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveNewCustomerAndBook()"><i class="ti ti-calendar-plus"></i> Save & book</button><button class="btn btn-primary" onclick="saveNewCustomer()"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
 }
-function addrInput(val){const box=document.getElementById('addr-suggestions');if(!box)return;if(val.length<3){box.style.display='none';return;}const filtered=FAKE_ADDRESSES.filter(a=>a.main.toLowerCase().includes(val.toLowerCase())||a.sub.toLowerCase().includes(val.toLowerCase()));if(!filtered.length){box.style.display='none';return;}box.style.display='block';box.innerHTML=filtered.map(a=>`<div class="addr-suggestion" onmousedown="selectAddr('${a.main}, ${a.sub}')"><div class="main-text">${a.main}</div><div class="sub-text">${a.sub}</div></div>`).join('');}
+let googleMapsLoadPromise=null,googleAutocompleteService=null,addrSearchTimer=null,addrSearchSeq=0;
+function addrEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function addrAttr(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+async function loadGooglePlaces(){
+  if(googleAutocompleteService)return googleAutocompleteService;
+  if(googleMapsLoadPromise)return googleMapsLoadPromise;
+  googleMapsLoadPromise=(async function(){
+    if(window.google&&google.maps&&google.maps.places){
+      googleAutocompleteService=new google.maps.places.AutocompleteService();
+      return googleAutocompleteService;
+    }
+    const {data:{session}}=await supabaseBrowser.auth.getSession();
+    const cfgResp=await fetch('/api/config/maps',{headers:{'Authorization':'Bearer '+session.access_token}});
+    if(!cfgResp.ok)return null;
+    const cfg=await cfgResp.json();
+    if(!cfg.enabled||!cfg.apiKey)return null;
+    await new Promise((resolve,reject)=>{
+      window.__crmGoogleMapsReady=resolve;
+      const s=document.createElement('script');
+      s.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(cfg.apiKey)}&libraries=places&callback=__crmGoogleMapsReady`;
+      s.async=true;s.defer=true;s.onerror=reject;document.head.appendChild(s);
+    });
+    googleAutocompleteService=new google.maps.places.AutocompleteService();
+    return googleAutocompleteService;
+  })().catch(err=>{console.error('loadGooglePlaces error',err);return null;});
+  return googleMapsLoadPromise;
+}
+function renderLocalAddrSuggestions(val,box){
+  const filtered=FAKE_ADDRESSES.filter(a=>a.main.toLowerCase().includes(val.toLowerCase())||a.sub.toLowerCase().includes(val.toLowerCase()));
+  if(!filtered.length){box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML=filtered.map(a=>`<div class="addr-suggestion" onmousedown="selectAddr('${addrAttr(a.main+', '+a.sub)}')"><div class="main-text">${addrEsc(a.main)}</div><div class="sub-text">${addrEsc(a.sub)}</div></div>`).join('');
+}
+function addrInput(val){
+  const box=document.getElementById('addr-suggestions');if(!box)return;
+  clearTimeout(addrSearchTimer);
+  if(val.length<3){box.style.display='none';return;}
+  box.style.display='block';
+  box.innerHTML='<div class="addr-suggestion"><div class="main-text">Searching addresses...</div></div>';
+  const seq=++addrSearchSeq;
+  addrSearchTimer=setTimeout(async()=>{
+    const svc=await loadGooglePlaces();
+    if(seq!==addrSearchSeq)return;
+    if(!svc){renderLocalAddrSuggestions(val,box);return;}
+    svc.getPlacePredictions({input:val,types:['address'],componentRestrictions:{country:'us'}},(predictions,status)=>{
+      if(seq!==addrSearchSeq)return;
+      const ok=window.google&&google.maps&&status===google.maps.places.PlacesServiceStatus.OK;
+      if(!ok||!predictions||!predictions.length){box.style.display='none';return;}
+      box.style.display='block';
+      box.innerHTML=predictions.slice(0,6).map(p=>{
+        const main=(p.structured_formatting&&p.structured_formatting.main_text)||p.description;
+        const sub=(p.structured_formatting&&p.structured_formatting.secondary_text)||'';
+        return `<div class="addr-suggestion" onmousedown="selectAddr('${addrAttr(p.description)}')"><div class="main-text">${addrEsc(main)}</div>${sub?`<div class="sub-text">${addrEsc(sub)}</div>`:''}</div>`;
+      }).join('');
+    });
+  },220);
+}
 function selectAddr(val){const inp=document.getElementById('nc-addr');if(inp)inp.value=val;hideAddrSug();}
 function hideAddrSug(){const box=document.getElementById('addr-suggestions');if(box)box.style.display='none';}
 function saveNewCustomer(){
@@ -171,7 +227,8 @@ function saveNewCustomer(){
       lastService: null,
       nextDue: null,
       nextServiceMonths: 12,
-      snoozeUntil: null
+      snoozeUntil: null,
+      location: activeLoc
     };
     try{
       const resp=await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -208,7 +265,8 @@ function saveNewCustomerAndBook(){
       lastService: null,
       nextDue: null,
       nextServiceMonths: 12,
-      snoozeUntil: null
+      snoozeUntil: null,
+      location: activeLoc
     };
     try{
       const resp=await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -268,6 +326,24 @@ function updateCust(id,field,val){
   })();
 }
 
+function emailJobPayload(job,cust){
+  return {
+    job,
+    customer:cust,
+    servicesText:(job.services||[]).map(svcName).join(', '),
+    productsText:(job.products||[]).map(svcName).join(', ')
+  };
+}
+async function sendJobEmail(path,job,cust){
+  if(!cust||!cust.email)return false;
+  try{
+    const {data:{session}}=await supabaseBrowser.auth.getSession();
+    const resp=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(emailJobPayload(job,cust))});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Email failed');}
+    return true;
+  }catch(err){console.error('sendJobEmail error',err);return false;}
+}
+
 /* ---------------------------------------------------------- SCHEDULE JOB */
 function openScheduleJob(prefillId){
   const custOpts=customers.map(c=>`<option value="${c.id}" ${prefillId===c.id?'selected':''}>${nameOf(c)}${c.isCompany&&c.contactName?' ('+c.contactName+')':''}</option>`).join('');
@@ -310,7 +386,8 @@ function saveJob(){
       payment: '',
       notes: document.getElementById('sj-notes').value,
       techNotes: '',
-      nextServiceMonths: cust.nextServiceMonths||12
+      nextServiceMonths: cust.nextServiceMonths||12,
+      location: activeLoc
     };
     try{
       const resp=await fetch('/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -322,7 +399,8 @@ function saveJob(){
         nextJobId = Math.max(nextJobId, (created.id||0)+1);
         await clearCustomerReminders(custId);
         await updateCustomerFields(cust,{snoozeUntil:null});
-        closeModal();toast('Job booked');
+        const emailSent=await sendJobEmail('/api/emails/job-confirmation',created,cust);
+        closeModal();toast(emailSent?'Job booked - confirmation sent':'Job booked');
         showView('jobs');
       }else{throw new Error('No job returned');}
     }catch(err){console.error('saveJob error',err);toast('Error saving job');}
@@ -445,7 +523,8 @@ async function completeJob(id){
       });
     }
     await clearCustomerReminders(j.customerId);
-    closeModal();toast(selectedPayment&&selectedPayment!=='Invoice'?'Complete - Receipt & review request sent':'Complete - Invoice & review request sent');showView('jobs');
+    const emailSent=await sendJobEmail('/api/emails/job-completed',j,cust);
+    closeModal();toast(emailSent?(selectedPayment&&selectedPayment!=='Invoice'?'Complete - receipt & review sent':'Complete - invoice & review sent'):'Complete - email not sent');showView('jobs');
   }catch(err){console.error('completeJob error',err);toast('Error completing job');}
 }
 function openCompletedJob(j){

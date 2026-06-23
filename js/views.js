@@ -2,6 +2,7 @@
    VIEWS — render functions + router
    ============================================================ */
 function showView(v){
+  if(typeof canView==='function'&&!canView(v)){toast('Owner access only');v='dashboard';}
   currentView=v;
   const meta={
     dashboard:['Dashboard','Your day at a glance'],
@@ -43,17 +44,19 @@ function renderDashboard(){
   const cogs=completedJobs.reduce((s,j)=>s+jobCost(j),0);
   const profit=gross-cogs;
   const margin=gross?Math.round(profit/gross*100):0;
+  const financialStats=typeof isOwner==='function'&&isOwner()?`
+  <div class="grid3" style="margin-bottom:18px">
+    <div class="stat"><div class="stat-label"><i class="ti ti-cash"></i> Gross revenue</div><div class="stat-val">${money(gross)}</div><div class="stat-foot">All time</div></div>
+    <div class="stat accent-red"><div class="stat-label"><i class="ti ti-receipt"></i> Cost of goods</div><div class="stat-val">${money(cogs)}</div><div class="stat-foot">Materials & labor</div></div>
+    <div class="stat accent-green"><div class="stat-label"><i class="ti ti-trending-up"></i> Profit</div><div class="stat-val">${money(profit)}</div><div class="stat-foot">${margin}% margin</div></div>
+  </div>`:'';
   return `
   <div class="grid3" style="margin-bottom:14px">
     <div class="stat ${tasks.length?'accent-amber':''}"><div class="stat-label"><i class="ti ti-phone-call"></i> Customers to call</div><div class="stat-val">${tasks.length}</div><div class="stat-foot">${tasks.length?'Due for service or follow-up':'All caught up'}</div></div>
     <div class="stat"><div class="stat-label"><i class="ti ti-calendar-event"></i> Scheduled jobs</div><div class="stat-val">${scheduled}</div><div class="stat-foot">On the books</div></div>
     <div class="stat"><div class="stat-label"><i class="ti ti-clock-hour-4"></i> Jobs today</div><div class="stat-val">${todayJobs.length}</div><div class="stat-foot">${fmtDate(today)}</div></div>
   </div>
-  <div class="grid3" style="margin-bottom:18px">
-    <div class="stat"><div class="stat-label"><i class="ti ti-cash"></i> Gross revenue</div><div class="stat-val">${money(gross)}</div><div class="stat-foot">All time</div></div>
-    <div class="stat accent-red"><div class="stat-label"><i class="ti ti-receipt"></i> Cost of goods</div><div class="stat-val">${money(cogs)}</div><div class="stat-foot">Materials & labor</div></div>
-    <div class="stat accent-green"><div class="stat-label"><i class="ti ti-trending-up"></i> Profit</div><div class="stat-val">${money(profit)}</div><div class="stat-foot">${margin}% margin</div></div>
-  </div>
+  ${financialStats}
   <div class="card">
     <div class="card-head" style="margin-bottom:4px"><div class="eyebrow"><i class="ti ti-phone-call"></i> Today\u2019s calls</div>${tasks.length?`<span class="badge badge-amber">${tasks.length} to make</span>`:''}</div>
     <p class="hint" style="margin-bottom:14px">Customers due for service (reminder fires one week before) plus any follow-ups you set. Tap a row for the full profile and history.</p>
@@ -284,7 +287,7 @@ async function deleteCatalog(type,id){
   }catch(err){console.error('deleteCatalog error',err);toast('Error removing item');}
 }
 async function addCatalogItem(type){
-  const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0};
+  const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,location:activeLoc};
   try{
     const resp=await fetch(catalogEndpoint(type),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
@@ -297,6 +300,9 @@ async function addCatalogItem(type){
 
 /* ---------------------------------------------------------- SETTINGS */
 function renderSettings(){
+  if(typeof isOwner==='function'&&!isOwner()){
+    return `<div class="card" style="max-width:520px">${renderPasswordSettings()}</div>`;
+  }
   return `<div class="grid2">
     <div class="card">
       <div class="section-title"><i class="ti ti-building-store"></i> Business info</div>
@@ -309,6 +315,8 @@ function renderSettings(){
       <div class="field"><label>Email</label><input type="email" placeholder="your@email.com"></div>
       <div class="field"><label>Google review link</label><input type="url" value="${GOOGLE_REVIEW_URL}"></div>
       <button class="btn btn-primary" onclick="toast('Settings saved')"><i class="ti ti-check"></i> Save changes</button>
+      ${renderPasswordSettings()}
+      ${typeof isOwner==='function'&&isOwner()?renderUserAdmin():''}
     </div>
     <div>
       <div class="card">
@@ -326,6 +334,52 @@ function renderSettings(){
       </div>
     </div>
   </div>`;
+}
+function renderPasswordSettings(){
+  return `<div class="section-title" style="margin-top:24px"><i class="ti ti-lock-password"></i> Change password</div>
+  <div class="field"><label>New password</label><input type="password" id="acct-new-password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+  <div class="field"><label>Confirm password</label><input type="password" id="acct-confirm-password" autocomplete="new-password" placeholder="Re-enter password"></div>
+  <button class="btn" onclick="changeOwnPassword()"><i class="ti ti-key"></i> Update password</button>`;
+}
+async function changeOwnPassword(){
+  const p=document.getElementById('acct-new-password').value;
+  const c=document.getElementById('acct-confirm-password').value;
+  if(!p||p.length<6)return toast('Password must be at least 6 characters');
+  if(p!==c)return toast('Passwords do not match');
+  try{
+    const {error}=await supabaseBrowser.auth.updateUser({password:p});
+    if(error)throw error;
+    document.getElementById('acct-new-password').value='';
+    document.getElementById('acct-confirm-password').value='';
+    toast('Password updated');
+  }catch(err){console.error('changeOwnPassword error',err);toast('Error updating password');}
+}
+function renderUserAdmin(){
+  return `<div class="section-title" style="margin-top:24px"><i class="ti ti-user-plus"></i> Add user</div>
+  <div class="field"><label>Name</label><input type="text" id="new-user-name" placeholder="Technician name"></div>
+  <div class="field"><label>Email</label><input type="email" id="new-user-email" placeholder="tech@example.com"></div>
+  <div class="field-row">
+    <div class="field" style="margin:0"><label>Role</label><select id="new-user-role"><option value="technician">Technician</option><option value="owner">Owner</option></select></div>
+    <div class="field" style="margin:0"><label>Temporary password</label><input type="text" id="new-user-password" placeholder="At least 6 characters"></div>
+  </div>
+  <button class="btn" onclick="createCrmUser()"><i class="ti ti-user-plus"></i> Create account</button>
+  <p class="hint" style="margin-top:10px">Give this temporary password to the user. They can change it later through Supabase password recovery.</p>`;
+}
+async function createCrmUser(){
+  const name=document.getElementById('new-user-name').value.trim();
+  const email=document.getElementById('new-user-email').value.trim();
+  const role=document.getElementById('new-user-role').value;
+  const password=document.getElementById('new-user-password').value;
+  if(!email||!password)return toast('Enter email and temporary password');
+  try{
+    const {data:{session}}=await supabaseBrowser.auth.getSession();
+    const resp=await fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({email,password,role,name})});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create user failed');}
+    document.getElementById('new-user-name').value='';
+    document.getElementById('new-user-email').value='';
+    document.getElementById('new-user-password').value='';
+    toast('User account created');
+  }catch(err){console.error('createCrmUser error',err);toast('Error creating user');}
 }
 function leadSourceFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 function replaceLeadSourceRow(row){

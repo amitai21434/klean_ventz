@@ -117,7 +117,8 @@ function taskPayloadFromTask(t){
     time:t.time||null,
     customerId:t.customerId||null,
     contact:t.contact||'',
-    done:!!t.done
+    done:!!t.done,
+    location:t.location||activeLoc
   };
 }
 function firstReturned(json){return Array.isArray(json)?json[0]:json;}
@@ -147,7 +148,7 @@ async function quickAddTask(inputId){
   const inp=document.getElementById(inputId);if(!inp)return;
   const v=inp.value.trim();if(!v)return toast('Type a task first');
   try{
-    await createTask({text:v,date:dOff(0),time:null,customerId:null,contact:'',done:false});
+    await createTask({text:v,date:dOff(0),time:null,customerId:null,contact:'',done:false,location:activeLoc});
     inp.value='';
     toast('Task added for today');
     showView(currentView);
@@ -187,7 +188,7 @@ async function saveTask(id){
       await updateTask(id,payload);
       toast('Task saved');
     }else{
-      await createTask({text,date:date||null,time:time||null,customerId,contact,done:false});
+      await createTask({text,date:date||null,time:time||null,customerId,contact,done:false,location:activeLoc});
       toast('Task added');
     }
     closeModal();showView(currentView);

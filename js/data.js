@@ -153,6 +153,10 @@ function snapshotLoc(loc){STORE[loc]={customers,jobs,reminders,tasks,SERVICES,PR
 function applyLoc(loc){const d=STORE[loc];customers=d.customers;jobs=d.jobs;reminders=d.reminders;tasks=d.tasks;SERVICES=d.SERVICES;PRODUCTS=d.PRODUCTS;LEAD_SOURCES=d.LEAD_SOURCES;LEAD_SOURCE_ROWS=d.LEAD_SOURCE_ROWS||LEAD_SOURCES.map((name,i)=>({id:'demo-'+i,name}));nextCustId=d.nextCustId;nextJobId=d.nextJobId;nextReminderId=d.nextReminderId;nextTaskId=d.nextTaskId;}
 function switchLocation(loc){if(loc===activeLoc)return;snapshotLoc(activeLoc);activeLoc=loc;applyLoc(loc);updateLocUI();showView(currentView);}
 function updateLocUI(){const m=LOCATIONS[activeLoc];const s=document.getElementById('brand-sub');if(s)s.textContent=m.sub;const sel=document.getElementById('loc-select');if(sel)sel.value=activeLoc;}
+function rowLoc(row){return row&&row.location?row.location:'nj';}
+function rowsForLoc(rows,loc){return (rows||[]).filter(row=>rowLoc(row)===loc);}
+function ensureLoc(row,loc){if(row&&!row.location)row.location=loc;return row;}
+function maxNextId(rows){return rows&&rows.length?Math.max(...rows.map(r=>r.id||0))+1:1;}
 
 function buildMidwest(){
   const SVC=[
@@ -334,21 +338,38 @@ async function loadData(baseUrl = '/api') {
       custRes.json(), jobsRes.json(), svcRes.json(), prdRes.json(), tasksRes.json(), remRes.json(), leadRes.json()
     ]);
 
-    // assign to the app globals (note: uppercase SERVICES/PRODUCTS used elsewhere)
-    customers = Array.isArray(custJson) ? custJson : (custJson.customers || []);
-    jobs = Array.isArray(jobsJson) ? jobsJson : (jobsJson.jobs || []);
-    SERVICES = Array.isArray(svcJson) ? svcJson : (svcJson.services || []);
-    PRODUCTS = Array.isArray(prdJson) ? prdJson : (prdJson.products || []);
-    tasks = Array.isArray(tasksJson) ? tasksJson : (tasksJson.tasks || []);
-    reminders = Array.isArray(remJson) ? remJson : (remJson.reminders || []);
+    const allCustomers = Array.isArray(custJson) ? custJson : (custJson.customers || []);
+    const allJobs = Array.isArray(jobsJson) ? jobsJson : (jobsJson.jobs || []);
+    const allServices = Array.isArray(svcJson) ? svcJson : (svcJson.services || []);
+    const allProducts = Array.isArray(prdJson) ? prdJson : (prdJson.products || []);
+    const allTasks = Array.isArray(tasksJson) ? tasksJson : (tasksJson.tasks || []);
+    const allReminders = Array.isArray(remJson) ? remJson : (remJson.reminders || []);
     LEAD_SOURCE_ROWS = Array.isArray(leadJson) ? leadJson : (leadJson.leadSources || []);
     LEAD_SOURCES = LEAD_SOURCE_ROWS.map(s => s.name).filter(Boolean);
 
-    // recalc next ids so client-side additions won't collide
-    nextCustId = customers.length ? Math.max(...customers.map(c => c.id || 0)) + 1 : 1;
-    nextJobId = jobs.length ? Math.max(...jobs.map(j => j.id || 0)) + 1 : 1;
-    nextReminderId = reminders.length ? Math.max(...reminders.map(r => r.id || 0)) + 1 : 1;
-    nextTaskId = tasks.length ? Math.max(...tasks.map(t => t.id || 0)) + 1 : 1;
+    Object.keys(LOCATIONS).forEach(loc=>{
+      const locCustomers=rowsForLoc(allCustomers,loc).map(r=>ensureLoc(r,loc));
+      const locJobs=rowsForLoc(allJobs,loc).map(r=>ensureLoc(r,loc));
+      const locReminders=rowsForLoc(allReminders,loc).map(r=>ensureLoc(r,loc));
+      const locTasks=rowsForLoc(allTasks,loc).map(r=>ensureLoc(r,loc));
+      const locServices=rowsForLoc(allServices,loc).map(r=>ensureLoc(r,loc));
+      const locProducts=rowsForLoc(allProducts,loc).map(r=>ensureLoc(r,loc));
+      STORE[loc]={
+        customers:locCustomers,
+        jobs:locJobs,
+        reminders:locReminders,
+        tasks:locTasks,
+        SERVICES:locServices,
+        PRODUCTS:locProducts,
+        LEAD_SOURCES,
+        LEAD_SOURCE_ROWS,
+        nextCustId:maxNextId(locCustomers),
+        nextJobId:maxNextId(locJobs),
+        nextReminderId:maxNextId(locReminders),
+        nextTaskId:maxNextId(locTasks)
+      };
+    });
+    applyLoc(activeLoc);
 
     // re-render UI now that data is populated
     try { updateLocUI(); } catch(e) { /* ignore if called before DOM ready */ }
