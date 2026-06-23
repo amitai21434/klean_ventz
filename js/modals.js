@@ -486,7 +486,7 @@ function openCompleteJob(id){
     <div class="pay-opts">${PAYMENT_METHODS.map(m=>`<div class="pay-opt" id="pay-${m}" onclick="selectPay('${m}')">${m}</div>`).join('')}</div>
     <div class="section-title" style="margin-top:18px">Job record</div>
     <div class="field"><label>Tech notes</label><textarea id="cs-notes" placeholder="What you found, what you did\u2026">${j.techNotes||''}</textarea></div>
-    <div class="field"><label>Photos <span class="optional-tag">before / after</span></label><input type="file" id="cs-photos" accept="image/*" multiple></div>
+    <div class="field"><label>Photos <span class="optional-tag">before / after</span></label>${j.photos&&j.photos.length?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${j.photos.map(url=>`<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('')}</div>`:''}<input type="file" id="cs-photos" accept="image/*" multiple></div>
     <div class="field" style="margin:0"><label>Next service due in</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${(j.nextServiceMonths||12)===m?'selected':''}>${m} months</option>`).join('')}</select></div>
   </div>
   <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveJobEdits(${id})"><i class="ti ti-device-floppy"></i> Save</button><button class="btn btn-success" onclick="completeJob(${id})"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
@@ -510,14 +510,32 @@ function hydrateJobModal(j){
   j.total=Math.max(0,(parseFloat(document.getElementById('cs-total').value)||0)-j.discount);
   j.payment=selectedPayment;
   j.techNotes=document.getElementById('cs-notes').value;
-  const pf=document.getElementById('cs-photos');
-  if(pf && pf.files && pf.files.length) j.photos=Array.from(pf.files).map(f=>f.name);
   j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;
   j.durationHours=CS_DURATION;
+}
+async function uploadJobPhotos(jobId,files){
+  const urls=[];
+  for(const file of files){
+    try{
+      const path=`${jobId}/${Date.now()}-${file.name}`;
+      const {error}=await supabaseBrowser.storage.from('job-photos').upload(path,file);
+      if(error)throw error;
+      const {data}=supabaseBrowser.storage.from('job-photos').getPublicUrl(path);
+      if(data?.publicUrl)urls.push(data.publicUrl);
+    }catch(err){console.error('photo upload error',err);toast('A photo failed to upload');}
+  }
+  return urls;
+}
+async function applyPendingPhotos(j){
+  const pf=document.getElementById('cs-photos');
+  if(!pf||!pf.files||!pf.files.length)return;
+  const uploaded=await uploadJobPhotos(j.id,Array.from(pf.files));
+  j.photos=[...(j.photos||[]),...uploaded];
 }
 async function saveJobEdits(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   hydrateJobModal(j);
+  await applyPendingPhotos(j);
   const payload={
     services:j.services,
     products:j.products,
@@ -548,6 +566,7 @@ async function saveJobEdits(id){
 async function completeJob(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   hydrateJobModal(j);
+  await applyPendingPhotos(j);
   j.status='completed';
   const payload={
     services:j.services,
@@ -603,7 +622,7 @@ function openCompletedJob(j){
       ${j.discount?`<div><span class="cell-sub">Discount</span><div style="font-weight:600;color:var(--red)">-${money(j.discount)}${j.discountReason?' ('+j.discountReason+')':''}</div></div>`:''}
       <div><span class="cell-sub">Payment</span><div style="font-weight:600">${j.payment||'\u2014'}</div></div>
       ${j.techNotes?`<div><span class="cell-sub">Tech notes</span><div style="font-weight:600">${j.techNotes}</div></div>`:''}
-      ${j.photos&&j.photos.length?`<div><span class="cell-sub">Photos</span><div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap">${j.photos.map(p=>`<div class="placeholder" style="width:72px;height:72px">photo</div>`).join('')}</div></div>`:''}
+      ${j.photos&&j.photos.length?`<div><span class="cell-sub">Photos</span><div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap">${j.photos.map(url=>`<a href="${url}" target="_blank" rel="noopener"><img src="${url}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" alt="Job photo"></a>`).join('')}</div></div>`:''}
       <div><span class="cell-sub">Next service due</span><div style="font-weight:600">${j.nextServiceMonths} months \u00b7 ${cc.nextDue?fmtDate(cc.nextDue):'\u2014'}</div></div>
     </div>
     <div class="callout callout-green" style="margin-top:16px"><i class="ti ti-mail-fast"></i><div><strong>Sent automatically:</strong> ${sentLine}</div></div>
