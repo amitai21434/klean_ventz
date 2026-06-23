@@ -7,6 +7,23 @@ function bgClose(e){if(e.target.classList.contains('scrim'))closeModal();}
 function toast(msg){const el=document.getElementById('toast');el.innerHTML='<i class="ti ti-check"></i>'+msg;el.classList.add('show');clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove('show'),3400);}
 function headX(title,sub){return `<div class="sheet-head"><div><div class="sheet-title">${title}</div>${sub?`<div class="sheet-sub">${sub}</div>`:''}</div><button class="close-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>`;}
 
+/* button loading state — disables the button and swaps its label while a slow action runs */
+function setBtnLoading(btn,loading,loadingText){
+  if(!btn)return;
+  if(loading){
+    btn.dataset.label=btn.innerHTML;
+    btn.disabled=true;
+    btn.innerHTML=`<i class="ti ti-loader-2 spin"></i> ${loadingText||'Working…'}`;
+  }else{
+    btn.disabled=false;
+    if(btn.dataset.label)btn.innerHTML=btn.dataset.label;
+  }
+}
+function previewSelectedPhotos(input){
+  const box=document.getElementById('cs-photos-preview');if(!box)return;
+  box.innerHTML=Array.from(input.files||[]).map(file=>`<img src="${URL.createObjectURL(file)}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('');
+}
+
 /* nav drawer (mobile) */
 function toggleNav(){document.getElementById('app').classList.toggle('nav-open');}
 function closeNav(){document.getElementById('app').classList.remove('nav-open');}
@@ -145,7 +162,7 @@ function openNewCustomer(){
     <div class="section-title" style="margin-top:14px">Notes</div>
     <div class="field" style="margin:0"><textarea id="nc-notes" placeholder="Gate code, dog in yard, access instructions\u2026"></textarea></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveNewCustomerAndBook()"><i class="ti ti-calendar-plus"></i> Save & book</button><button class="btn btn-primary" onclick="saveNewCustomer()"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveNewCustomerAndBook(this)"><i class="ti ti-calendar-plus"></i> Save & book</button><button class="btn btn-primary" onclick="saveNewCustomer(this)"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
 }
 let googleMapsLoadPromise=null,googleAutocompleteService=null,addrSearchTimer=null,addrSearchSeq=0;
 function addrEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -206,7 +223,7 @@ function addrInput(val){
 }
 function selectAddr(val){const inp=document.getElementById('nc-addr');if(inp)inp.value=val;hideAddrSug();}
 function hideAddrSug(){const box=document.getElementById('addr-suggestions');if(box)box.style.display='none';}
-function saveNewCustomer(){
+function saveNewCustomer(btn){
   (async function(){
     const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
     const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
@@ -230,6 +247,7 @@ function saveNewCustomer(){
       snoozeUntil: null,
       location: activeLoc
     };
+    setBtnLoading(btn,true,'Saving…');
     try{
       const resp=await fetch(API_BASE+'/api/customers',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
@@ -241,10 +259,11 @@ function saveNewCustomer(){
         closeModal();toast('Customer saved');showView('customers');
       }else{throw new Error('No customer returned');}
     }catch(err){console.error('saveNewCustomer error',err);toast('Error saving customer');}
+    finally{setBtnLoading(btn,false);}
   })();
 }
 
-function saveNewCustomerAndBook(){
+function saveNewCustomerAndBook(btn){
   (async function(){
     const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
     const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
@@ -268,6 +287,7 @@ function saveNewCustomerAndBook(){
       snoozeUntil: null,
       location: activeLoc
     };
+    setBtnLoading(btn,true,'Saving…');
     try{
       const resp=await fetch(API_BASE+'/api/customers',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
@@ -281,6 +301,7 @@ function saveNewCustomerAndBook(){
         openScheduleJobForCustomer(created.id);
       }else{throw new Error('No customer returned');}
     }catch(err){console.error('saveNewCustomerAndBook error',err);toast('Error saving customer');}
+    finally{setBtnLoading(btn,false);}
   })();
 }
 
@@ -414,11 +435,11 @@ function openScheduleJob(prefillId){
     <div class="section-title" style="margin-top:16px">Job notes</div>
     <div class="field" style="margin:0"><textarea id="sj-notes" placeholder="Access notes, customer requests\u2026">${pre?pre.notes||'':''}</textarea></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob()"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob(this)"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
   renderSjCustInfo();
 }
 function openScheduleJobForCustomer(id){openScheduleJob(id);}
-function saveJob(){
+function saveJob(btn){
   (async function(){
     const custId=SJ_CUST.id;
     if(!custId)return toast('Please select a customer');
@@ -444,6 +465,7 @@ function saveJob(){
       nextServiceMonths: cust.nextServiceMonths||12,
       location: activeLoc
     };
+    setBtnLoading(btn,true,'Booking…');
     try{
       const resp=await fetch(API_BASE+'/api/jobs',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
@@ -459,6 +481,7 @@ function saveJob(){
         showView('jobs');
       }else{throw new Error('No job returned');}
     }catch(err){console.error('saveJob error',err);toast('Error saving job');}
+    finally{setBtnLoading(btn,false);}
   })();
 }
 
@@ -486,10 +509,10 @@ function openCompleteJob(id){
     <div class="pay-opts">${PAYMENT_METHODS.map(m=>`<div class="pay-opt" id="pay-${m}" onclick="selectPay('${m}')">${m}</div>`).join('')}</div>
     <div class="section-title" style="margin-top:18px">Job record</div>
     <div class="field"><label>Tech notes</label><textarea id="cs-notes" placeholder="What you found, what you did\u2026">${j.techNotes||''}</textarea></div>
-    <div class="field"><label>Photos <span class="optional-tag">before / after</span></label>${j.photos&&j.photos.length?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${j.photos.map(url=>`<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('')}</div>`:''}<input type="file" id="cs-photos" accept="image/*" multiple></div>
+    <div class="field"><label>Photos <span class="optional-tag">before / after</span></label>${j.photos&&j.photos.length?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${j.photos.map(url=>`<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('')}</div>`:''}<input type="file" id="cs-photos" accept="image/*" multiple onchange="previewSelectedPhotos(this)"><div id="cs-photos-preview" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div></div>
     <div class="field" style="margin:0"><label>Next service due in</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${(j.nextServiceMonths||12)===m?'selected':''}>${m} months</option>`).join('')}</select></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveJobEdits(${id})"><i class="ti ti-device-floppy"></i> Save</button><button class="btn btn-success" onclick="completeJob(${id})"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn btn-success" onclick="completeJob(${id},this)"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
 }
 function recalcCompleteTotal(){
   let t=0;
@@ -532,26 +555,27 @@ async function applyPendingPhotos(j){
   const uploaded=await uploadJobPhotos(j.id,Array.from(pf.files));
   j.photos=[...(j.photos||[]),...uploaded];
 }
-async function saveJobEdits(id){
+async function saveJobEdits(id,btn){
   const j=jobs.find(x=>x.id===id);if(!j)return;
-  hydrateJobModal(j);
-  await applyPendingPhotos(j);
-  const payload={
-    services:j.services,
-    products:j.products,
-    surcharge:j.surcharge,
-    surchargeAmt:j.surchargeAmt,
-    discount:j.discount,
-    discountReason:j.discountReason,
-    total:j.total,
-    payment:j.payment,
-    techNotes:j.techNotes,
-    photos:j.photos,
-    nextServiceMonths:j.nextServiceMonths,
-    durationHours:j.durationHours,
-    status:j.status
-  };
+  setBtnLoading(btn,true,'Saving…');
   try{
+    hydrateJobModal(j);
+    await applyPendingPhotos(j);
+    const payload={
+      services:j.services,
+      products:j.products,
+      surcharge:j.surcharge,
+      surchargeAmt:j.surchargeAmt,
+      discount:j.discount,
+      discountReason:j.discountReason,
+      total:j.total,
+      payment:j.payment,
+      techNotes:j.techNotes,
+      photos:j.photos,
+      nextServiceMonths:j.nextServiceMonths,
+      durationHours:j.durationHours,
+      status:j.status
+    };
     const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
     const json=await resp.json();
@@ -561,29 +585,31 @@ async function saveJobEdits(id){
     toast('Job saved');
     showView('jobs');
   }catch(err){console.error('saveJobEdits error',err);toast('Error saving job');}
+  finally{setBtnLoading(btn,false);}
 }
 
-async function completeJob(id){
+async function completeJob(id,btn){
   const j=jobs.find(x=>x.id===id);if(!j)return;
-  hydrateJobModal(j);
-  await applyPendingPhotos(j);
-  j.status='completed';
-  const payload={
-    services:j.services,
-    products:j.products,
-    surcharge:j.surcharge,
-    surchargeAmt:j.surchargeAmt,
-    discount:j.discount,
-    discountReason:j.discountReason,
-    total:j.total,
-    payment:j.payment,
-    techNotes:j.techNotes,
-    photos:j.photos,
-    nextServiceMonths:j.nextServiceMonths,
-    durationHours:j.durationHours,
-    status:j.status
-  };
+  setBtnLoading(btn,true,'Completing…');
   try{
+    hydrateJobModal(j);
+    await applyPendingPhotos(j);
+    j.status='completed';
+    const payload={
+      services:j.services,
+      products:j.products,
+      surcharge:j.surcharge,
+      surchargeAmt:j.surchargeAmt,
+      discount:j.discount,
+      discountReason:j.discountReason,
+      total:j.total,
+      payment:j.payment,
+      techNotes:j.techNotes,
+      photos:j.photos,
+      nextServiceMonths:j.nextServiceMonths,
+      durationHours:j.durationHours,
+      status:j.status
+    };
     const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Complete failed');}
     const json=await resp.json();
@@ -605,6 +631,7 @@ async function completeJob(id){
     const emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
     closeModal();toast(emailSent?(selectedPayment&&selectedPayment!=='Invoice'?'Complete - receipt & review sent':'Complete - invoice & review sent'):'Complete - email not sent');showView('jobs');
   }catch(err){console.error('completeJob error',err);toast('Error completing job');}
+  finally{setBtnLoading(btn,false);}
 }
 function openCompletedJob(j){
   const cc=customers.find(x=>x.id===j.customerId)||{};

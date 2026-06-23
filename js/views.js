@@ -363,15 +363,16 @@ function renderUserAdmin(){
     <div class="field" style="margin:0"><label>Role</label><select id="new-user-role"><option value="technician">Technician</option><option value="owner">Owner</option></select></div>
     <div class="field" style="margin:0"><label>Temporary password</label><input type="text" id="new-user-password" placeholder="At least 6 characters"></div>
   </div>
-  <button class="btn" onclick="createCrmUser()"><i class="ti ti-user-plus"></i> Create account</button>
+  <button class="btn" onclick="createCrmUser(this)"><i class="ti ti-user-plus"></i> Create account</button>
   <p class="hint" style="margin-top:10px">Give this temporary password to the user. They can change it later through Supabase password recovery.</p>`;
 }
-async function createCrmUser(){
+async function createCrmUser(btn){
   const name=document.getElementById('new-user-name').value.trim();
   const email=document.getElementById('new-user-email').value.trim();
   const role=document.getElementById('new-user-role').value;
   const password=document.getElementById('new-user-password').value;
   if(!email||!password)return toast('Enter email and temporary password');
+  setBtnLoading(btn,true,'Creating…');
   try{
     const {data:{session}}=await supabaseBrowser.auth.getSession();
     const resp=await fetch(API_BASE+'/api/users',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({email,password,role,name})});
@@ -381,6 +382,7 @@ async function createCrmUser(){
     document.getElementById('new-user-password').value='';
     toast('User account created');
   }catch(err){console.error('createCrmUser error',err);toast('Error creating user');}
+  finally{setBtnLoading(btn,false);}
 }
 function leadSourceFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 function replaceLeadSourceRow(row){
