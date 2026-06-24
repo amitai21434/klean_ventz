@@ -754,7 +754,7 @@ function openInvoice(id){
   <div class="sheet-head no-print"><div class="sheet-title">${docType}</div><button class="close-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
   <div class="sheet-body invoice" id="invoice-doc">
     <div class="inv-head">
-      <div class="inv-brand"><div class="brand-badge"><img src="${LOGO_SRC}" alt=""></div><div><div class="inv-co">Klean Ventz</div><div class="inv-co-sub">Dryer Vent Cleaning &amp; Installation LLC</div><div class="inv-co-sub mono">732-808-3637 \u00b7 kleanventz.com</div></div></div>
+      <div class="inv-brand"><div class="brand-badge"><img src="${LOGO_SRC}" alt=""></div><div><div class="inv-co">${SETTINGS.businessName}</div><div class="inv-co-sub">${SETTINGS.businessSub}</div><div class="inv-co-sub mono">${SETTINGS.phone} \u00b7 ${SETTINGS.website}</div></div></div>
       <div><div class="inv-doctype">${docType}</div><div class="inv-meta">No. ${invNo}</div><div class="inv-meta">${fmtDate(j.date)}</div></div>
     </div>
     <div class="inv-parties">
@@ -769,7 +769,7 @@ function openInvoice(id){
     </div>
     <div style="margin-top:16px">${statusBox}</div>
     ${j.techNotes?`<div style="margin-top:14px;font-size:12.5px;color:var(--ink-500)"><strong style="color:var(--ink-900)">Notes:</strong> ${j.techNotes}</div>`:''}
-    <div class="inv-foot">Thank you for your business! We\u2019d love a review:<br><span class="mono" style="color:var(--ink-900);word-break:break-all">${GOOGLE_REVIEW_URL}</span></div>
+    <div class="inv-foot">Thank you for your business! We\u2019d love a review:<br><span class="mono" style="color:var(--ink-900);word-break:break-all">${SETTINGS.googleReviewUrl}</span></div>
   </div>
   <div class="sheet-foot no-print"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="window.print()"><i class="ti ti-printer"></i> Print / Save as PDF</button></div>`);
 }

@@ -331,13 +331,14 @@ function renderSettings(){
       <div class="section-title"><i class="ti ti-building-store"></i> Business info</div>
       <div style="display:flex;align-items:center;gap:13px;margin-bottom:18px;padding:14px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r-ctl)">
         <div class="brand-badge" style="width:50px;height:50px"><img src="${LOGO_SRC}" alt=""></div>
-        <div><div style="font-weight:700;font-size:15px">Klean Ventz</div><div class="hint">Dryer Vent Cleaning &amp; Installation LLC</div></div>
+        <div><div style="font-weight:700;font-size:15px">${SETTINGS.businessName}</div><div class="hint">${SETTINGS.businessSub}</div></div>
       </div>
-      <div class="field"><label>Business name</label><input type="text" value="Klean Ventz Dryer Vent Cleaning & Installation LLC"></div>
-      <div class="field-row"><div class="field" style="margin:0"><label>Phone</label><input type="text" value="732-808-3637"></div><div class="field" style="margin:0"><label>Website</label><input type="text" value="kleanventz.com"></div></div>
-      <div class="field"><label>Email</label><input type="email" placeholder="your@email.com"></div>
-      <div class="field"><label>Google review link</label><input type="url" value="${GOOGLE_REVIEW_URL}"></div>
-      <button class="btn btn-primary" onclick="toast('Settings saved')"><i class="ti ti-check"></i> Save changes</button>
+      <div class="field"><label>Business name</label><input type="text" id="set-name" value="${SETTINGS.businessName}"></div>
+      <div class="field"><label>Tagline</label><input type="text" id="set-sub" value="${SETTINGS.businessSub}"></div>
+      <div class="field-row"><div class="field" style="margin:0"><label>Phone</label><input type="text" id="set-phone" value="${SETTINGS.phone}"></div><div class="field" style="margin:0"><label>Website</label><input type="text" id="set-website" value="${SETTINGS.website}"></div></div>
+      <div class="field"><label>Email</label><input type="email" id="set-email" value="${SETTINGS.email}" placeholder="your@email.com"></div>
+      <div class="field"><label>Google review link</label><input type="url" id="set-review" value="${SETTINGS.googleReviewUrl}"></div>
+      <button class="btn btn-primary" onclick="saveSettings(this)"><i class="ti ti-check"></i> Save changes</button>
       ${renderPasswordSettings()}
       ${typeof isOwner==='function'&&isOwner()?renderUserAdmin():''}
     </div>
@@ -357,6 +358,28 @@ function renderSettings(){
       </div>
     </div>
   </div>`;
+}
+async function saveSettings(btn){
+  const payload={
+    businessName: document.getElementById('set-name').value.trim()||SETTINGS.businessName,
+    businessSub: document.getElementById('set-sub').value.trim(),
+    phone: document.getElementById('set-phone').value.trim(),
+    website: document.getElementById('set-website').value.trim(),
+    email: document.getElementById('set-email').value.trim(),
+    googleReviewUrl: document.getElementById('set-review').value.trim()||SETTINGS.googleReviewUrl
+  };
+  setBtnLoading(btn,true,'Saving…');
+  try{
+    const {data:{session}}=await supabaseBrowser.auth.getSession();
+    const resp=await fetch(API_BASE+'/api/settings',{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
+    const updated=await resp.json();
+    SETTINGS={...SETTINGS,...updated};
+    updateBrandUI();
+    toast('Settings saved');
+    showView('settings');
+  }catch(err){console.error('saveSettings error',err);toast('Error saving settings');}
+  finally{setBtnLoading(btn,false);}
 }
 function renderPasswordSettings(){
   return `<div class="section-title" style="margin-top:24px"><i class="ti ti-lock-password"></i> Change password</div>

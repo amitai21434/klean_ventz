@@ -6,6 +6,8 @@ const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
 const API_BASE='https://tactile-pointless-landlady.ngrok-free.dev';
 const NGROK_HEADERS={'ngrok-skip-browser-warning':'true'};
 
+let SETTINGS={businessName:'Klean Ventz',businessSub:'Dryer Vent Cleaning & Installation LLC',phone:'732-808-3637',website:'kleanventz.com',email:'',googleReviewUrl:GOOGLE_REVIEW_URL};
+
 let SERVICES = [];
 let PRODUCTS = [];
 let LEAD_SOURCE_ROWS = [];
@@ -159,6 +161,7 @@ function snapshotLoc(loc){STORE[loc]={customers,jobs,reminders,tasks,SERVICES,PR
 function applyLoc(loc){const d=STORE[loc];customers=d.customers;jobs=d.jobs;reminders=d.reminders;tasks=d.tasks;SERVICES=d.SERVICES;PRODUCTS=d.PRODUCTS;LEAD_SOURCES=d.LEAD_SOURCES;LEAD_SOURCE_ROWS=d.LEAD_SOURCE_ROWS||LEAD_SOURCES.map((name,i)=>({id:'demo-'+i,name}));nextCustId=d.nextCustId;nextJobId=d.nextJobId;nextReminderId=d.nextReminderId;nextTaskId=d.nextTaskId;}
 function switchLocation(loc){if(loc===activeLoc)return;snapshotLoc(activeLoc);activeLoc=loc;applyLoc(loc);updateLocUI();showView(currentView);}
 function updateLocUI(){const m=LOCATIONS[activeLoc];const s=document.getElementById('brand-sub');if(s)s.textContent=m.sub;const sel=document.getElementById('loc-select');if(sel)sel.value=activeLoc;}
+function updateBrandUI(){const el=document.getElementById('brand-name');if(el)el.textContent=SETTINGS.businessName;}
 function rowLoc(row){return row&&row.location?row.location:'nj';}
 function rowsForLoc(rows,loc){return (rows||[]).filter(row=>rowLoc(row)===loc);}
 function ensureLoc(row,loc){if(row&&!row.location)row.location=loc;return row;}
@@ -363,6 +366,16 @@ async function loadData(baseUrl = API_BASE + '/api') {
     const allReminders = Array.isArray(remJson) ? remJson : (remJson.reminders || []);
     LEAD_SOURCE_ROWS = Array.isArray(leadJson) ? leadJson : (leadJson.leadSources || []);
     LEAD_SOURCES = LEAD_SOURCE_ROWS.map(s => s.name).filter(Boolean);
+
+    try{
+      const {data:{session}}=await supabaseBrowser.auth.getSession();
+      const settingsRes=await fetch(baseUrl+'/settings',{headers:{...NGROK_HEADERS,'Authorization':'Bearer '+session.access_token}});
+      if(settingsRes.ok){
+        const s=await settingsRes.json();
+        SETTINGS={...SETTINGS,...s};
+      }
+    }catch(e){console.error('settings load error',e);}
+    updateBrandUI();
 
     Object.keys(LOCATIONS).forEach(loc=>{
       const locCustomers=rowsForLoc(allCustomers,loc).map(r=>ensureLoc(r,loc));
