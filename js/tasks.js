@@ -129,7 +129,7 @@ function replaceTask(updated){
   nextTaskId=Math.max(nextTaskId,(updated.id||0)+1);
 }
 async function createTask(payload){
-  const resp=await fetch(API_BASE+'/api/tasks',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const resp=await apiFetch(API_BASE+'/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create task failed');}
   const created=firstReturned(await resp.json());
   if(!created)throw new Error('No task returned');
@@ -137,7 +137,7 @@ async function createTask(payload){
   return created;
 }
 async function updateTask(id,payload){
-  const resp=await fetch(`${API_BASE}/api/tasks/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const resp=await apiFetch(`${API_BASE}/api/tasks/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update task failed');}
   const updated=firstReturned(await resp.json());
   if(!updated)throw new Error('No task returned');
@@ -221,7 +221,7 @@ async function followUpTask(id){
 }
 async function deleteTask(id){
   try{
-    const resp=await fetch(`${API_BASE}/api/tasks/${id}`,{method:'DELETE',headers:NGROK_HEADERS});
+    const resp=await apiFetch(`${API_BASE}/api/tasks/${id}`,{method:'DELETE'});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete task failed');}
     tasks=tasks.filter(t=>t.id!==id);
     closeModal();toast('Task deleted');showView(currentView);

@@ -6,6 +6,14 @@ const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
 const API_BASE='https://tactile-pointless-landlady.ngrok-free.dev';
 const NGROK_HEADERS={'ngrok-skip-browser-warning':'true'};
 
+/* fetch wrapper that attaches the current Supabase session token to every backend request */
+async function apiFetch(url,options={}){
+  const {data:{session}}=await supabaseBrowser.auth.getSession();
+  const headers={...NGROK_HEADERS,...(options.headers||{})};
+  if(session?.access_token)headers['Authorization']='Bearer '+session.access_token;
+  return fetch(url,{...options,headers});
+}
+
 let SETTINGS={businessName:'Klean Ventz',businessSub:'Dryer Vent Cleaning & Installation LLC',phone:'732-808-3637',website:'kleanventz.com',email:'',googleReviewUrl:GOOGLE_REVIEW_URL};
 
 let SERVICES = [];
@@ -342,13 +350,13 @@ function seedSourceHistory(custArr,jobsArr,svcArr,prdArr,startId,weights,tag){
 async function loadData(baseUrl = API_BASE + '/api') {
   try {
     const endpoints = [
-      fetch(baseUrl + '/customers',{headers:NGROK_HEADERS}),
-      fetch(baseUrl + '/jobs',{headers:NGROK_HEADERS}),
-      fetch(baseUrl + '/services',{headers:NGROK_HEADERS}),
-      fetch(baseUrl + '/products',{headers:NGROK_HEADERS}),
-      fetch(baseUrl + '/tasks',{headers:NGROK_HEADERS}),
-      fetch(baseUrl + '/reminders',{headers:NGROK_HEADERS}),
-      fetch(baseUrl + '/lead-sources',{headers:NGROK_HEADERS}),
+      apiFetch(baseUrl + '/customers'),
+      apiFetch(baseUrl + '/jobs'),
+      apiFetch(baseUrl + '/services'),
+      apiFetch(baseUrl + '/products'),
+      apiFetch(baseUrl + '/tasks'),
+      apiFetch(baseUrl + '/reminders'),
+      apiFetch(baseUrl + '/lead-sources'),
     ];
     const [custRes, jobsRes, svcRes, prdRes, tasksRes, remRes, leadRes] = await Promise.all(endpoints);
     if (!custRes.ok || !jobsRes.ok || !svcRes.ok || !prdRes.ok || !tasksRes.ok || !remRes.ok || !leadRes.ok) {
@@ -368,8 +376,7 @@ async function loadData(baseUrl = API_BASE + '/api') {
     LEAD_SOURCES = LEAD_SOURCE_ROWS.map(s => s.name).filter(Boolean);
 
     try{
-      const {data:{session}}=await supabaseBrowser.auth.getSession();
-      const settingsRes=await fetch(baseUrl+'/settings',{headers:{...NGROK_HEADERS,'Authorization':'Bearer '+session.access_token}});
+      const settingsRes=await apiFetch(baseUrl+'/settings');
       if(settingsRes.ok){
         const s=await settingsRes.json();
         SETTINGS={...SETTINGS,...s};

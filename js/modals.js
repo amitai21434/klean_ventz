@@ -73,7 +73,7 @@ function replaceReminder(updated){
 function customerFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 async function updateCustomerFields(cust,fields){
   if(!cust)return null;
-  const resp=await fetch(`${API_BASE}/api/customers/${cust.id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(fields)});
+  const resp=await apiFetch(`${API_BASE}/api/customers/${cust.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)});
   if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Customer save failed');}
   const updated=customerFirstReturned(await resp.json());
   if(updated)Object.assign(cust,updated);
@@ -83,7 +83,7 @@ async function updateCustomerFields(cust,fields){
 async function clearCustomerReminders(customerId){
   const existing=reminders.filter(r=>String(r.customerId)===String(customerId));
   await Promise.all(existing.map(async r=>{
-    const resp=await fetch(`${API_BASE}/api/reminders/${r.id}`,{method:'DELETE',headers:NGROK_HEADERS});
+    const resp=await apiFetch(`${API_BASE}/api/reminders/${r.id}`,{method:'DELETE'});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
   }));
   reminders=reminders.filter(r=>String(r.customerId)!==String(customerId));
@@ -95,7 +95,7 @@ async function upsertReminder(custId,dueDate,reason,reminderId){
   const payload={customerId:custId,dueDate,reason,location:activeLoc};
   const url=existing?`${API_BASE}/api/reminders/${existing.id}`:API_BASE+'/api/reminders';
   const method=existing?'PUT':'POST';
-  const resp=await fetch(url,{method,headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const resp=await apiFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder save failed');}
   const saved=reminderFirstReturned(await resp.json());
   if(!saved)throw new Error('No reminder returned');
@@ -121,7 +121,7 @@ async function logCallback(custId,reminderId){
 async function logDismiss(custId,reminderId){
   try{
     if(reminderId){
-      const resp=await fetch(`${API_BASE}/api/reminders/${reminderId}`,{method:'DELETE',headers:NGROK_HEADERS});
+      const resp=await apiFetch(`${API_BASE}/api/reminders/${reminderId}`,{method:'DELETE'});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
       reminders=reminders.filter(r=>String(r.id)!==String(reminderId));
     }else{
@@ -199,8 +199,7 @@ async function loadGooglePlaces(){
       googleAutocompleteService=new google.maps.places.AutocompleteService();
       return googleAutocompleteService;
     }
-    const {data:{session}}=await supabaseBrowser.auth.getSession();
-    const cfgResp=await fetch(API_BASE+'/api/config/maps',{headers:{...NGROK_HEADERS,'Authorization':'Bearer '+session.access_token}});
+    const cfgResp=await apiFetch(API_BASE+'/api/config/maps');
     if(!cfgResp.ok)return null;
     const cfg=await cfgResp.json();
     if(!cfg.enabled||!cfg.apiKey)return null;
@@ -273,7 +272,7 @@ function saveNewCustomer(btn){
     };
     setBtnLoading(btn,true,'Saving…');
     try{
-      const resp=await fetch(API_BASE+'/api/customers',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
       const json=await resp.json();
       const created = Array.isArray(json)?json[0]:json;
@@ -313,7 +312,7 @@ function saveNewCustomerAndBook(btn){
     };
     setBtnLoading(btn,true,'Saving…');
     try{
-      const resp=await fetch(API_BASE+'/api/customers',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
       const json=await resp.json();
       const created = Array.isArray(json)?json[0]:json;
@@ -366,9 +365,9 @@ function confirmDeleteCustomer(id){
 async function deleteCustomerCascade(id){
   try{
     const cJobs=jobs.filter(j=>j.customerId===id);
-    await Promise.all(cJobs.map(j=>fetch(`${API_BASE}/api/jobs/${j.id}`,{method:'DELETE',headers:NGROK_HEADERS})));
+    await Promise.all(cJobs.map(j=>apiFetch(`${API_BASE}/api/jobs/${j.id}`,{method:'DELETE'})));
     await clearCustomerReminders(id);
-    const resp=await fetch(`${API_BASE}/api/customers/${id}`,{method:'DELETE',headers:NGROK_HEADERS});
+    const resp=await apiFetch(`${API_BASE}/api/customers/${id}`,{method:'DELETE'});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
     jobs=jobs.filter(j=>j.customerId!==id);
     customers=customers.filter(c=>c.id!==id);
@@ -383,7 +382,7 @@ function updateCust(id,field,val){
     const payload={};
     payload[field]=val;
     try{
-      const resp=await fetch(`${API_BASE}/api/customers/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await apiFetch(`${API_BASE}/api/customers/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();console.error('Update failed',txt);toast('Error saving');}
     }catch(err){console.error('updateCust error',err);toast('Error saving');}
   })();
@@ -524,7 +523,7 @@ function saveJob(btn){
     };
     setBtnLoading(btn,true,'Booking…');
     try{
-      const resp=await fetch(API_BASE+'/api/jobs',{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const resp=await apiFetch(API_BASE+'/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
       const json=await resp.json();
       const created = Array.isArray(json)?json[0]:json;
@@ -635,7 +634,7 @@ async function saveJobEdits(id,btn){
       durationHours:j.durationHours,
       status:j.status
     };
-    const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
     const json=await resp.json();
     const updated=Array.isArray(json)?json[0]:json;
@@ -669,7 +668,7 @@ async function completeJob(id,btn){
       durationHours:j.durationHours,
       status:j.status
     };
-    const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{...NGROK_HEADERS,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Complete failed');}
     const json=await resp.json();
     const updated=Array.isArray(json)?json[0]:json;
@@ -721,7 +720,7 @@ function confirmDeleteJob(id,wasCompleted){
 async function deleteJobRecord(id,wasCompleted){
   try{
     const j=jobs.find(x=>x.id===id);
-    const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'DELETE',headers:NGROK_HEADERS});
+    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'DELETE'});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
     jobs=jobs.filter(x=>x.id!==id);
     if(wasCompleted&&j){
