@@ -366,6 +366,7 @@ async function deleteCustomerCascade(id){
   try{
     const cJobs=jobs.filter(j=>j.customerId===id);
     await Promise.all(cJobs.map(j=>apiFetch(`${API_BASE}/api/jobs/${j.id}`,{method:'DELETE'})));
+    await Promise.all(cJobs.map(j=>deleteJobPhotos(j.id)));
     await clearCustomerReminders(id);
     const resp=await apiFetch(`${API_BASE}/api/customers/${id}`,{method:'DELETE'});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
@@ -593,13 +594,35 @@ function hydrateJobModal(j){
   j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;
   j.durationHours=CS_DURATION;
 }
+function resizeImage(file,maxDim=1600,quality=0.82){
+  return new Promise(resolve=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      let {width,height}=img;
+      if(width<=maxDim&&height<=maxDim){resolve(file);return;}
+      if(width>height){height=Math.round(height*maxDim/width);width=maxDim;}
+      else{width=Math.round(width*maxDim/height);height=maxDim;}
+      const canvas=document.createElement('canvas');
+      canvas.width=width;canvas.height=height;
+      canvas.getContext('2d').drawImage(img,0,0,width,height);
+      canvas.toBlob(blob=>{
+        resolve(blob?new File([blob],file.name.replace(/\.\w+$/,'')+'.jpg',{type:'image/jpeg'}):file);
+      },'image/jpeg',quality);
+    };
+    img.onerror=()=>resolve(file);
+    img.src=url;
+  });
+}
 async function uploadJobPhotos(jobId,files){
   const urls=[];
   for(const file of files){
     try{
-      const safeName=file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
+      const resized=await resizeImage(file);
+      const safeName=resized.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
       const path=`${jobId}/${Date.now()}-${safeName}`;
-      const {error}=await supabaseBrowser.storage.from('job-photos').upload(path,file);
+      const {error}=await supabaseBrowser.storage.from('job-photos').upload(path,resized);
       if(error)throw error;
       const {data}=supabaseBrowser.storage.from('job-photos').getPublicUrl(path);
       if(data?.publicUrl)urls.push(data.publicUrl);
@@ -612,6 +635,14 @@ async function applyPendingPhotos(j){
   if(!pf||!pf.files||!pf.files.length)return;
   const uploaded=await uploadJobPhotos(j.id,Array.from(pf.files));
   j.photos=[...(j.photos||[]),...uploaded];
+}
+async function deleteJobPhotos(jobId){
+  try{
+    const {data:files,error:listErr}=await supabaseBrowser.storage.from('job-photos').list(String(jobId));
+    if(listErr||!files||!files.length)return;
+    const paths=files.map(f=>`${jobId}/${f.name}`);
+    await supabaseBrowser.storage.from('job-photos').remove(paths);
+  }catch(err){console.error('deleteJobPhotos error',err);}
 }
 async function saveJobEdits(id,btn){
   const j=jobs.find(x=>x.id===id);if(!j)return;
@@ -722,6 +753,7 @@ async function deleteJobRecord(id,wasCompleted){
     const j=jobs.find(x=>x.id===id);
     const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'DELETE'});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+    await deleteJobPhotos(id);
     jobs=jobs.filter(x=>x.id!==id);
     if(wasCompleted&&j){
       const cust=customers.find(c=>c.id===j.customerId);
