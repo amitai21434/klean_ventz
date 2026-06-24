@@ -697,6 +697,7 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
   :root{--sidebar-w:0px}
   .only-mobile{display:flex}
   .menu-btn{display:inline-flex}
+  #topbar-actions .btn-label{display:none}
 
   .sidebar{
     position:fixed;left:0;top:0;bottom:0;width:280px;

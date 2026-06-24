@@ -540,7 +540,8 @@ async function uploadJobPhotos(jobId,files){
   const urls=[];
   for(const file of files){
     try{
-      const path=`${jobId}/${Date.now()}-${file.name}`;
+      const safeName=file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
+      const path=`${jobId}/${Date.now()}-${safeName}`;
       const {error}=await supabaseBrowser.storage.from('job-photos').upload(path,file);
       if(error)throw error;
       const {data}=supabaseBrowser.storage.from('job-photos').getPublicUrl(path);

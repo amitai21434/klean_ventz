@@ -20,9 +20,9 @@ function showView(v){
   document.getElementById('page-title').textContent=(meta[v]||['',''])[0];
   document.getElementById('page-sub').textContent=(meta[v]||['',''])[1];
   const actions={
-    customers:'<button class="btn btn-primary" onclick="openNewCustomer()"><i class="ti ti-plus"></i> New customer</button>',
-    jobs:'<button class="btn btn-primary" onclick="openScheduleJob()"><i class="ti ti-plus"></i> Schedule job</button>',
-    tasks:'<button class="btn btn-primary" onclick="openTaskModal()"><i class="ti ti-plus"></i> New task</button>',
+    customers:'<button class="btn btn-primary" onclick="openNewCustomer()"><i class="ti ti-plus"></i><span class="btn-label"> New customer</span></button>',
+    jobs:'<button class="btn btn-primary" onclick="openScheduleJob()"><i class="ti ti-plus"></i><span class="btn-label"> Schedule job</span></button>',
+    tasks:'<button class="btn btn-primary" onclick="openTaskModal()"><i class="ti ti-plus"></i><span class="btn-label"> New task</span></button>',
   };
   document.getElementById('topbar-actions').innerHTML=actions[v]||'';
   const views={dashboard:renderDashboard,customers:renderCustomers,jobs:renderJobs,calendar:renderCalendar,tasks:renderTasks,leadsources:renderLeadSources,financials:renderFinancials,catalog:renderCatalog,settings:renderSettings};
@@ -177,8 +177,10 @@ function layoutDay(dayJobs){
 
 function renderDaySchedule(){
   const key=calDate;const dayJobs=jobs.filter(j=>j.date===key);
-  const H0=7,H1=20,HH=60,GUT=58;
+  const H0=7,HH=60,GUT=58;
   const evs=layoutDay(dayJobs);
+  const maxEnd=evs.reduce((m,e)=>Math.max(m,e.end),H0*60);
+  const H1=Math.max(20,Math.ceil(maxEnd/60));
   let grid='';
   for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?' AM':' PM');grid+=`<div style="position:absolute;top:${top}px;left:0;right:0;height:0;border-top:1px solid var(--line)"></div><div class="cell-mono" style="position:absolute;top:${top-7}px;left:0;width:${GUT-10}px;text-align:right;font-size:10px;color:var(--ink-400)">${label}</div>`;}
   let blocks='';
@@ -192,7 +194,10 @@ function renderDaySchedule(){
 function renderWeek(){
   const start=weekStartKey(calDate);
   const days=[];for(let i=0;i<7;i++)days.push(addDays(start,i));
-  const H0=7,H1=20,HH=48,GUT=44,COLW=128;
+  const H0=7,HH=48,GUT=44,COLW=128;
+  const dayEvs=days.map(k=>layoutDay(jobs.filter(j=>j.date===k)));
+  const maxEnd=dayEvs.reduce((m,evs)=>evs.reduce((mm,e)=>Math.max(mm,e.end),m),H0*60);
+  const H1=Math.max(20,Math.ceil(maxEnd/60));
   const totalW=GUT+7*COLW;const totalH=(H1-H0)*HH+10;
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const todayKey=dOff(0);
   let header=`<div style="display:flex;width:${totalW}px"><div style="width:${GUT}px;flex-shrink:0"></div>`+days.map((k,i)=>{const dp=k.split('-');const isT=k===todayKey;return `<div onclick="openCalDay('${k}')" style="width:${COLW}px;flex-shrink:0;text-align:center;cursor:pointer;padding:6px 0;border-radius:8px;${isT?'background:var(--ink-900);color:#fff':''}"><div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;${isT?'color:#fff':'color:var(--ink-400)'}">${dayNames[i]}</div><div class="cell-mono" style="font-size:15px;font-weight:600;margin-top:1px">${parseInt(dp[2])}</div></div>`;}).join('')+`</div>`;
@@ -200,7 +205,7 @@ function renderWeek(){
   for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?'a':'p');grid+=`<div style="position:absolute;top:${top}px;left:0;width:${totalW}px;border-top:1px solid var(--line)"></div><div class="cell-mono" style="position:absolute;top:${top-6}px;left:0;width:${GUT-6}px;text-align:right;font-size:9px;color:var(--ink-400)">${label}</div>`;}
   let seps='';for(let i=0;i<7;i++){const left=GUT+i*COLW;seps+=`<div style="position:absolute;top:0;bottom:0;left:${left}px;border-left:1px solid var(--line)"></div>`;}
   let blocks='';
-  days.forEach((k,di)=>{const dj=jobs.filter(j=>j.date===k);const evs=layoutDay(dj);evs.forEach(e=>{const j=e.job;const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(j.durationHours||2)*HH-3;const cw=COLW/e.cols;const left=GUT+di*COLW+e.col*cw+1;const w=cw-3;blocks+=`<div class="cal-event${j.status==='completed'?' done':''}" onclick="openJob(${j.id})" style="top:${top}px;left:${left}px;width:${w}px;height:${height}px;padding:3px 6px"><div class="cal-event-time" style="color:${j.status==='completed'?'var(--green)':'var(--ink-900)'}">${fmtTime(j.time)}</div><div class="cal-event-name" style="font-size:11px">${j.customerName}</div></div>`;});});
+  days.forEach((k,di)=>{const evs=dayEvs[di];evs.forEach(e=>{const j=e.job;const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(j.durationHours||2)*HH-3;const cw=COLW/e.cols;const left=GUT+di*COLW+e.col*cw+1;const w=cw-3;blocks+=`<div class="cal-event${j.status==='completed'?' done':''}" onclick="openJob(${j.id})" style="top:${top}px;left:${left}px;width:${w}px;height:${height}px;padding:3px 6px"><div class="cal-event-time" style="color:${j.status==='completed'?'var(--green)':'var(--ink-900)'}">${fmtTime(j.time)}</div><div class="cal-event-name" style="font-size:11px">${j.customerName}</div></div>`;});});
   return `<div class="card"><div class="card-head"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-sm btn-icon" onclick="calNavWeek(-1)"><i class="ti ti-chevron-left"></i></button><h3 style="font-size:15px;font-weight:700;letter-spacing:-.01em">${fmtDate(start)} \u2013 ${fmtDate(addDays(start,6))}</h3><button class="btn btn-sm btn-icon" onclick="calNavWeek(1)"><i class="ti ti-chevron-right"></i></button><button class="btn btn-sm" onclick="calToday()">Today</button></div>${calToggle('week')}</div><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="min-width:${totalW}px">${header}<div style="position:relative;height:${totalH}px;margin-top:4px">${grid}${seps}${blocks}</div></div></div><p class="hint" style="margin-top:10px;text-align:center">Tap a day to open its full schedule \u00b7 scroll sideways for the whole week.</p></div>`;
 }
 
