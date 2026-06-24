@@ -109,8 +109,13 @@ function taskRow(t){
 /* ---------------------------------------------------------- CUSTOMERS */
 function renderCustomers(){
   return `
-  <div class="card" style="padding:14px 16px;margin-bottom:14px"><div class="search"><i class="ti ti-search"></i><input type="text" id="cust-search" placeholder="Search by name, phone, or company\u2026" oninput="filterCustomerRows(this.value)"></div></div>
+  <div class="card" style="padding:14px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:center"><div class="search" style="flex:1"><i class="ti ti-search"></i><input type="text" id="cust-search" placeholder="Search by name, phone, or company\u2026" oninput="filterCustomerRows(this.value)"></div><button class="btn btn-sm" onclick="exportCustomersCsv()"><i class="ti ti-download"></i> Export CSV</button></div>
   <div class="card flush"><div class="table-wrap"><table class="data"><thead><tr><th>Name</th><th>Account</th><th>Phone</th><th>Address</th><th>Next due</th><th>Lead source</th><th></th></tr></thead><tbody id="cust-tbody">${customers.map(custRow).join('')}</tbody></table></div></div>`;
+}
+function exportCustomersCsv(){
+  const rows=[['Name','Account type','Phone','Phone 2','Email','Address','Lead sources','Next due','Total jobs','Notes']];
+  customers.forEach(c=>rows.push([nameOf(c),c.isCompany?'Company':'Individual',c.phone||'',c.phone2||'',c.email||'',c.address||'',(c.leadSources||[]).join('; '),c.nextDue||'',c.jobs||0,c.notes||'']));
+  downloadCsv('klean-ventz-customers.csv',rows);
 }
 function custRow(c){
   const today=dOff(0);
@@ -132,7 +137,8 @@ function filterCustomerRows(v){const q=v.toLowerCase();document.querySelectorAll
 /* ---------------------------------------------------------- JOBS */
 function renderJobs(){
   const sorted=[...jobs].sort((a,b)=>a.date>b.date?-1:(a.date<b.date?1:(a.time>b.time?-1:1)));
-  return `<div class="card flush"><div class="table-wrap"><table class="data"><thead><tr><th>Customer</th><th>Date</th><th>Services</th><th>Status</th><th>Total</th><th></th></tr></thead><tbody>${sorted.map(j=>`<tr class="row-link" onclick="openJob(${j.id})">
+  return `<div class="card" style="padding:14px 16px;margin-bottom:14px;display:flex;justify-content:flex-end"><button class="btn btn-sm" onclick="exportJobsCsv()"><i class="ti ti-download"></i> Export CSV</button></div>
+  <div class="card flush"><div class="table-wrap"><table class="data"><thead><tr><th>Customer</th><th>Date</th><th>Services</th><th>Status</th><th>Total</th><th></th></tr></thead><tbody>${sorted.map(j=>`<tr class="row-link" onclick="openJob(${j.id})">
     <td class="td-primary" data-label="Customer"><div class="cell-strong">${j.customerName}</div></td>
     <td data-label="Date" class="cell-mono">${fmtDate(j.date)} \u00b7 ${fmtTime(j.time)}</td>
     <td data-label="Services"><span class="cell-sub truncate">${j.services.map(svcName).join(', ')}</span></td>
@@ -140,6 +146,11 @@ function renderJobs(){
     <td data-label="Total" class="cell-mono">${j.total?money(j.total):'\u2014'}</td>
     <td data-label="" style="text-align:right">${j.status==='scheduled'?`<button class="btn btn-sm btn-success" onclick="event.stopPropagation();openCompleteJob(${j.id})"><i class="ti ti-check"></i> Complete</button>`:`<button class="btn btn-sm" onclick="event.stopPropagation();openInvoice(${j.id})"><i class="ti ti-file-text"></i> Receipt</button>`}</td>
   </tr>`).join('')}</tbody></table></div></div>`;
+}
+function exportJobsCsv(){
+  const rows=[['Date','Time','Customer','Services','Products','Status','Total','Payment']];
+  jobs.forEach(j=>rows.push([j.date,j.time,j.customerName,j.services.map(svcName).join('; '),j.products.map(svcName).join('; '),j.status,j.total||0,j.payment||'']));
+  downloadCsv('klean-ventz-jobs.csv',rows);
 }
 
 /* ---------------------------------------------------------- CALENDAR */
@@ -184,7 +195,7 @@ function renderDaySchedule(){
   let grid='';
   for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?' AM':' PM');grid+=`<div style="position:absolute;top:${top}px;left:0;right:0;height:0;border-top:1px solid var(--line)"></div><div class="cell-mono" style="position:absolute;top:${top-7}px;left:0;width:${GUT-10}px;text-align:right;font-size:10px;color:var(--ink-400)">${label}</div>`;}
   let blocks='';
-  evs.forEach(e=>{const j=e.job;const c=customers.find(x=>x.id===j.customerId)||{};const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(j.durationHours||2)*HH-5;const leftCalc=`calc(${GUT}px + (100% - ${GUT}px) * ${e.col/e.cols})`;const widthCalc=`calc((100% - ${GUT}px) * ${1/e.cols} - 6px)`;blocks+=`<div class="cal-event${j.status==='completed'?' done':''}" onclick="openJob(${j.id})" style="top:${top}px;left:${leftCalc};width:${widthCalc};height:${height}px"><div class="cal-event-time" style="color:${j.status==='completed'?'var(--green)':'var(--ink-900)'}">${fmtTime(j.time)}\u2013${fmtTime(minsToHHMM(e.end))} \u00b7 ${j.status}</div><div class="cal-event-name">${j.customerName}</div><div class="cal-event-meta"><i class="ti ti-map-pin"></i> ${c.address||'No address'}</div><div class="cal-event-meta">${j.services.map(svcName).join(', ')}</div></div>`;});
+  evs.forEach(e=>{const j=e.job;const c=customers.find(x=>x.id===j.customerId)||{};const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(j.durationHours||2)*HH-5;const leftCalc=`calc(${GUT}px + (100% - ${GUT}px) * ${e.col/e.cols})`;const widthCalc=`calc((100% - ${GUT}px) * ${1/e.cols} - 6px)`;blocks+=`<div class="cal-event${j.status==='completed'?' done':''}" onclick="openJob(${j.id})" style="top:${top}px;left:${leftCalc};width:${widthCalc};height:${height}px"><div class="cal-event-time" style="color:${j.status==='completed'?'var(--green)':'var(--ink-900)'}">${fmtTime(j.time)}\u2013${fmtTime(minsToHHMM(e.end))} \u00b7 ${j.status}</div><div class="cal-event-name">${j.customerName}</div><div class="cal-event-meta"><i class="ti ti-map-pin"></i> ${addressLink(c.address)}</div><div class="cal-event-meta">${j.services.map(svcName).join(', ')}</div></div>`;});
   const totalH=(H1-H0)*HH+12;
   const dp=key.split('-');const dObj=new Date(+dp[0],+dp[1]-1,+dp[2]);const dayName=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dObj.getDay()];
   const isToday=key===dOff(0);
@@ -221,7 +232,7 @@ function renderFinancials(){
   completed.forEach(j=>{const k=periodKey(j.date,finPeriod);(groups[k]=groups[k]||[]).push(j);});
   const keys=Object.keys(groups).sort().reverse();
   const tabs=[['week','Week'],['month','Month'],['year','Year'],['all','All time']];
-  let html=`<div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:14px 18px"><span class="eyebrow" style="margin:0">Break down by</span><div class="segmented">${tabs.map(t=>`<button class="${finPeriod===t[0]?'on':''}" onclick="setFinPeriod('${t[0]}')">${t[1]}</button>`).join('')}</div></div>`;
+  let html=`<div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:14px 18px"><div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><span class="eyebrow" style="margin:0">Break down by</span><div class="segmented">${tabs.map(t=>`<button class="${finPeriod===t[0]?'on':''}" onclick="setFinPeriod('${t[0]}')">${t[1]}</button>`).join('')}</div></div><button class="btn btn-sm" onclick="exportFinancialsCsv()"><i class="ti ti-download"></i> Export CSV</button></div>`;
   if(!keys.length){html+='<div class="card"><div class="empty"><i class="ti ti-chart-bar"></i>No completed jobs yet \u2014 your numbers will appear here as you complete jobs.</div></div>';return html;}
   keys.forEach(k=>{
     const arr=groups[k];
@@ -232,6 +243,12 @@ function renderFinancials(){
     html+=`<div class="card"><div class="card-head" style="margin-bottom:14px"><div style="font-weight:700;font-size:17px;letter-spacing:-.01em">${periodLabel(k,finPeriod)}</div><span class="badge badge-ink">${arr.length} job${arr.length!==1?'s':''} \u00b7 ${margin}% margin</span></div><div class="grid3"><div class="stat"><div class="stat-label">Gross revenue</div><div class="stat-val sm">${money(gross)}</div></div><div class="stat accent-red"><div class="stat-label">Cost of goods</div><div class="stat-val sm">${money(cost)}</div></div><div class="stat accent-green"><div class="stat-label">Profit</div><div class="stat-val sm">${money(profit)}</div></div></div></div>`;
   });
   return html;
+}
+function exportFinancialsCsv(){
+  const completed=jobs.filter(j=>j.status==='completed');
+  const rows=[['Date','Customer','Services','Products','Gross','Cost','Profit','Payment']];
+  completed.forEach(j=>{const cost=jobCost(j);rows.push([j.date,j.customerName,j.services.map(svcName).join('; '),j.products.map(svcName).join('; '),j.total||0,cost,(j.total||0)-cost,j.payment||'']);});
+  downloadCsv('klean-ventz-financials.csv',rows);
 }
 
 /* ---------------------------------------------------------- CATALOG */
@@ -257,7 +274,7 @@ function catalogRow(type,it){
     <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
     <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
     <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
-    <button class="btn btn-sm btn-icon" title="Remove" onclick="deleteCatalog('${type}','${it.id}')"><i class="ti ti-trash"></i></button>
+    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove “${nm}” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
   </div>`;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
@@ -407,7 +424,7 @@ async function createLeadSource(name){
   replaceLeadSourceRow(created);
   return created;
 }
-function leadRow(s){return `<div class="lead-chip"><span>${s}</span><i class="ti ti-x" onclick="removeLeadSource('${s.replace(/'/g,"\\'")}')"></i></div>`;}
+function leadRow(s){const esc=s.replace(/'/g,"\\'");return `<div class="lead-chip"><span>${s}</span><i class="ti ti-x" onclick="confirmAction('Remove lead source “${esc}”?',()=>removeLeadSource('${esc}'))"></i></div>`;}
 async function addLeadSource(){
   const inp=document.getElementById('new-lead-source');const val=inp.value.trim();if(!val)return;
   try{

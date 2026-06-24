@@ -19,10 +19,34 @@ function setBtnLoading(btn,loading,loadingText){
     if(btn.dataset.label)btn.innerHTML=btn.dataset.label;
   }
 }
+function showSuccessFlourish(){
+  const el=document.getElementById('success-flourish');
+  if(!el)return;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
 function previewSelectedPhotos(input){
   const box=document.getElementById('cs-photos-preview');if(!box)return;
   box.innerHTML=Array.from(input.files||[]).map(file=>`<img src="${URL.createObjectURL(file)}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('');
 }
+
+/* confirm-before-destructive-action modal — call confirmAction(message, fn) instead of acting directly */
+let PENDING_CONFIRM=null;
+function confirmAction(message,fn){
+  PENDING_CONFIRM=fn;
+  showModal(`${headX('Are you sure?')}
+  <div class="sheet-body"><p style="margin:0">${message}</p></div>
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" style="color:var(--red)" onclick="runConfirmedAction()"><i class="ti ti-trash"></i> Delete</button></div>`);
+}
+function runConfirmedAction(){
+  const fn=PENDING_CONFIRM;
+  PENDING_CONFIRM=null;
+  closeModal();
+  if(fn)fn();
+}
+function mapsUrl(address){return 'https://maps.google.com/?q='+encodeURIComponent(address);}
+function addressLink(address){return address?`<a href="${mapsUrl(address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:inherit;text-decoration:underline">${tEsc(address)}</a>`:'No address on file';}
 
 /* nav drawer (mobile) */
 function toggleNav(){document.getElementById('app').classList.toggle('nav-open');}
@@ -331,7 +355,25 @@ function openCustomer(id){
     <div class="section-title">Service history</div>
     ${sortedJobs.length?sortedJobs.map((j,i)=>`<div class="history-item"><div class="history-rail"><div class="dot ${j.status==='completed'?'':'amber'}"></div>${i<sortedJobs.length-1?'<div class="history-line"></div>':''}</div><div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:600">${fmtDate(j.date)} \u2014 ${j.services.map(svcName).join(', ')}</div><div class="cell-sub" style="margin-top:1px">${j.status}${j.total?' \u00b7 '+money(j.total):''}${j.payment?' \u00b7 '+j.payment:''}${j.photos&&j.photos.length?' \u00b7 '+j.photos.length+' photo'+(j.photos.length>1?'s':''):''}</div>${j.techNotes?`<div class="cell-sub" style="margin-top:3px">${j.techNotes}</div>`:''}</div></div>`).join(''):'<p class="hint">No service history yet.</p>'}
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openScheduleJobForCustomer(${id})"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
+  <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteCustomer(${id})"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openScheduleJobForCustomer(${id})"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
+}
+function confirmDeleteCustomer(id){
+  const c=customers.find(x=>x.id===id);if(!c)return;
+  const cJobs=jobs.filter(j=>j.customerId===id);
+  const warn=cJobs.length?` This will also delete their ${cJobs.length} job${cJobs.length!==1?'s':''} and service history.`:'';
+  confirmAction(`Delete ${nameOf(c)}?${warn} This can’t be undone.`,()=>deleteCustomerCascade(id));
+}
+async function deleteCustomerCascade(id){
+  try{
+    const cJobs=jobs.filter(j=>j.customerId===id);
+    await Promise.all(cJobs.map(j=>fetch(`${API_BASE}/api/jobs/${j.id}`,{method:'DELETE',headers:NGROK_HEADERS})));
+    await clearCustomerReminders(id);
+    const resp=await fetch(`${API_BASE}/api/customers/${id}`,{method:'DELETE',headers:NGROK_HEADERS});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+    jobs=jobs.filter(j=>j.customerId!==id);
+    customers=customers.filter(c=>c.id!==id);
+    closeModal();toast('Customer deleted');showView('customers');
+  }catch(err){console.error('deleteCustomerCascade error',err);toast('Error deleting customer');}
 }
 function updateCust(id,field,val){
   (async function(){
@@ -406,8 +448,22 @@ function renderSjCustInfo(){
     </div>
   </div>`;
 }
-function sjSetDuration(h,btn){SJ_DURATION=h;btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
-function csSetDuration(h,btn){CS_DURATION=h;btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+function timeRangeLabel(startTime,hours){
+  if(!startTime)return '';
+  const [h,m]=startTime.split(':').map(Number);
+  return `${fmtTime(startTime)}–${fmtTime(minsToHHMM(h*60+m+hours*60))}`;
+}
+function sjUpdateRange(){
+  const t=document.getElementById('sj-time')?.value;
+  const el=document.getElementById('sj-time-range');
+  if(el)el.textContent=t?timeRangeLabel(t,SJ_DURATION):'';
+}
+function csUpdateRange(){
+  const el=document.getElementById('cs-time-range');
+  if(el)el.textContent=timeRangeLabel(CS_TIME,CS_DURATION);
+}
+function sjSetDuration(h,btn){SJ_DURATION=h;btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');sjUpdateRange();}
+function csSetDuration(h,btn){CS_DURATION=h;btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');csUpdateRange();}
 function durationButtons(active,onclickName){return [2,3,4].map(h=>`<button type="button" class="${active===h?'on':''}" onclick="${onclickName}(${h},this)">${h} hr</button>`).join('');}
 function openScheduleJob(prefillId){
   const pre=prefillId?customers.find(c=>c.id===prefillId):null;
@@ -425,8 +481,8 @@ function openScheduleJob(prefillId){
       <div id="sj-cust-info"></div>
       <div style="margin-top:6px"><span class="hint">Not on the books? <span style="color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline" onclick="closeModal();openNewCustomer()">Add a new customer \u2197</span></span></div>
     </div>
-    <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}"></div><div class="field" style="margin:0"><label>Start time</label><input type="time" id="sj-time" value="10:00"></div></div>
-    <div class="field"><label>Job length</label><div class="segmented" id="sj-duration">${durationButtons(2,'sjSetDuration')}</div></div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}"></div><div class="field" style="margin:0"><label>Start time</label><input type="time" id="sj-time" value="10:00" oninput="sjUpdateRange()"></div></div>
+    <div class="field"><label>Job length</label><div class="segmented" id="sj-duration">${durationButtons(2,'sjSetDuration')}</div><div class="hint cell-mono" id="sj-time-range" style="margin-top:6px"></div></div>
     <div class="section-title">Services</div>
     ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''}><label for="svc-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
     <div class="surcharge-box"><input type="checkbox" id="sj-surcharge"><label>Above 2nd floor surcharge</label><input type="number" id="sj-surcharge-amt" placeholder="$0"></div>
@@ -437,6 +493,7 @@ function openScheduleJob(prefillId){
   </div>
   <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob(this)"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
   renderSjCustInfo();
+  sjUpdateRange();
 }
 function openScheduleJobForCustomer(id){openScheduleJob(id);}
 function saveJob(btn){
@@ -491,10 +548,11 @@ function openJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;if(j.status===
 function openCompleteJob(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;selectedPayment=j.payment||'';
   CS_DURATION=j.durationHours||2;
+  CS_TIME=j.time;
   const cc=customers.find(x=>x.id===j.customerId)||{};
   showModal(`${headX('Complete job',nameOf(cc))}
   <div class="sheet-body">
-    <div class="callout callout-green" style="margin-bottom:14px"><i class="ti ti-calendar-check"></i><div><strong>${fmtDate(j.date)} at ${fmtTime(j.time)}</strong><div style="color:var(--ink-500);margin-top:1px"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${cc.address||'No address on file'}${cc.phone?' \u00b7 '+cc.phone:''}</div></div></div>
+    <div class="callout callout-green" style="margin-bottom:14px"><i class="ti ti-calendar-check"></i><div><strong>${fmtDate(j.date)} \u00b7 <span id="cs-time-range">${timeRangeLabel(j.time,j.durationHours||2)}</span></strong><div style="color:var(--ink-500);margin-top:1px"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${addressLink(cc.address)}${cc.phone?' \u00b7 '+cc.phone:''}</div></div></div>
     <div class="field"><label>Job length</label><div class="segmented" id="cs-duration">${durationButtons(j.durationHours||2,'csSetDuration')}</div></div>
     <div class="section-title">Services performed</div>
     ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${j.services.includes(s.id)?'checked':''} onchange="recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
@@ -512,7 +570,7 @@ function openCompleteJob(id){
     <div class="field"><label>Photos <span class="optional-tag">before / after</span></label>${j.photos&&j.photos.length?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${j.photos.map(url=>`<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('')}</div>`:''}<input type="file" id="cs-photos" accept="image/*" multiple onchange="previewSelectedPhotos(this)"><div id="cs-photos-preview" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div></div>
     <div class="field" style="margin:0"><label>Next service due in</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${(j.nextServiceMonths||12)===m?'selected':''}>${m} months</option>`).join('')}</select></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn btn-success" onclick="completeJob(${id},this)"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
+  <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteJob(${id},false)"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn btn-success" onclick="completeJob(${id},this)"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
 }
 function recalcCompleteTotal(){
   let t=0;
@@ -630,7 +688,7 @@ async function completeJob(id,btn){
     }
     await clearCustomerReminders(j.customerId);
     const emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
-    closeModal();toast(emailSent?(selectedPayment&&selectedPayment!=='Invoice'?'Complete - receipt & review sent':'Complete - invoice & review sent'):'Complete - email not sent');showView('jobs');
+    closeModal();toast(emailSent?(selectedPayment&&selectedPayment!=='Invoice'?'Complete - receipt & review sent':'Complete - invoice & review sent'):'Complete - email not sent');showView('jobs');showSuccessFlourish();
   }catch(err){console.error('completeJob error',err);toast('Error completing job');}
   finally{setBtnLoading(btn,false);}
 }
@@ -643,7 +701,7 @@ function openCompletedJob(j){
       <div class="stat"><div class="stat-label">Date</div><div class="stat-val sm">${fmtDate(j.date)} \u00b7 ${fmtTime(j.time)}</div></div>
       <div class="stat accent-green"><div class="stat-label">Total collected</div><div class="stat-val sm">${money(j.total)}</div></div>
     </div>
-    <div class="callout callout-ink" style="margin-bottom:16px"><i class="ti ti-map-pin"></i><div>${cc.address||'No address on file'}${cc.phone?' \u00b7 '+cc.phone:''}</div></div>
+    <div class="callout callout-ink" style="margin-bottom:16px"><i class="ti ti-map-pin"></i><div>${addressLink(cc.address)}${cc.phone?' \u00b7 '+cc.phone:''}</div></div>
     <div style="display:grid;gap:10px;font-size:13.5px">
       <div><span class="cell-sub">Services</span><div style="font-weight:600">${j.services.map(svcName).join(', ')||'\u2014'}</div></div>
       ${j.products.length?`<div><span class="cell-sub">Products</span><div style="font-weight:600">${j.products.map(svcName).join(', ')}</div></div>`:''}
@@ -655,7 +713,23 @@ function openCompletedJob(j){
     </div>
     <div class="callout callout-green" style="margin-top:16px"><i class="ti ti-mail-fast"></i><div><strong>Sent automatically:</strong> ${sentLine}</div></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openInvoice(${j.id})"><i class="ti ti-file-text"></i> View ${j.payment&&j.payment!=='Invoice'?'receipt':'invoice'}</button></div>`);
+  <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteJob(${j.id},true)"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openInvoice(${j.id})"><i class="ti ti-file-text"></i> View ${j.payment&&j.payment!=='Invoice'?'receipt':'invoice'}</button></div>`);
+}
+function confirmDeleteJob(id,wasCompleted){
+  confirmAction('Delete this job? This can’t be undone.',()=>deleteJobRecord(id,wasCompleted));
+}
+async function deleteJobRecord(id,wasCompleted){
+  try{
+    const j=jobs.find(x=>x.id===id);
+    const resp=await fetch(`${API_BASE}/api/jobs/${id}`,{method:'DELETE',headers:NGROK_HEADERS});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+    jobs=jobs.filter(x=>x.id!==id);
+    if(wasCompleted&&j){
+      const cust=customers.find(c=>c.id===j.customerId);
+      if(cust)await updateCustomerFields(cust,{jobs:Math.max(0,(cust.jobs||0)-1)});
+    }
+    closeModal();toast('Job deleted');showView('jobs');
+  }catch(err){console.error('deleteJobRecord error',err);toast('Error deleting job');}
 }
 
 /* ---------------------------------------------------------- INVOICE / RECEIPT */

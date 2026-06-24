@@ -8,6 +8,11 @@
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+<div id="conn-banner" class="conn-banner">
+  <i class="ti ti-plug-connected-x"></i>
+  <span>Can’t connect to the server. Check that the backend is running.</span>
+  <button class="btn btn-sm" onclick="retryLoadData()">Retry</button>
+</div>
 <div class="app" id="app">
 
   <div class="nav-scrim" onclick="closeNav()"></div>
@@ -67,6 +72,7 @@
 
 <div id="modal"></div>
 <div class="toast" id="toast"></div>
+<div id="success-flourish" class="success-flourish"><i class="ti ti-circle-check"></i></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/auth.js"></script>

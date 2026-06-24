@@ -148,6 +148,7 @@ let nextCustId=1,nextJobId=1,nextReminderId=1,nextTaskId=1,selectedPayment='';
 let SJ_CUST={id:null,q:'',open:false};
 let SJ_DURATION=2;
 let CS_DURATION=2;
+let CS_TIME='';
 let tasks = [];
 let currentView='dashboard';
 let activeLoc='nj';
@@ -213,6 +214,17 @@ function fmtTime(t){if(!t)return'';const[h,m]=t.split(':').map(Number);const ap=
 function money(n){return '$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function money2(n){return '$'+(Number(n)||0).toFixed(2)}
 function statusBadge(s){return{scheduled:'badge-ink badge-dot',completed:'badge-green badge-dot'}[s]||'badge-ink'}
+
+/* ---- CSV export ---- */
+function csvEscape(v){const s=String(v??'');return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function downloadCsv(filename,rows){
+  const csv=rows.map(row=>row.map(csvEscape).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 /* ---- dashboard task computation ---- */
 function getDashboardTasks(){
@@ -376,11 +388,22 @@ async function loadData(baseUrl = API_BASE + '/api') {
     });
     applyLoc(activeLoc);
 
+    const banner=document.getElementById('conn-banner');
+    if(banner)banner.classList.remove('show');
+
     // re-render UI now that data is populated
     try { updateLocUI(); } catch(e) { /* ignore if called before DOM ready */ }
     try { showView(currentView || 'dashboard'); } catch(e) { /* ignore if called before DOM ready */ }
   } catch (err) {
     console.error('loadData error', err);
     if (typeof toast === 'function') toast('Error loading data from server');
+    const banner=document.getElementById('conn-banner');
+    if(banner)banner.classList.add('show');
   }
+}
+async function retryLoadData(){
+  const btn=document.querySelector('#conn-banner button');
+  if(btn){btn.disabled=true;btn.textContent='Retrying…';}
+  await loadData();
+  if(btn){btn.disabled=false;btn.textContent='Retry';}
 }

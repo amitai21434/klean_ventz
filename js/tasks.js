@@ -90,7 +90,7 @@ function taskListRow(t){
     <span class="badge ${bc}">${bl}</span>
     <div class="task-actions">
       <button class="btn btn-sm btn-icon" title="Edit" onclick="openTaskModal(${t.id})"><i class="ti ti-pencil"></i></button>
-      <button class="btn btn-sm btn-icon" title="Delete" onclick="deleteTask(${t.id})"><i class="ti ti-trash"></i></button>
+      <button class="btn btn-sm btn-icon" title="Delete" onclick="event.stopPropagation();confirmAction('Delete this task? This can’t be undone.',()=>deleteTask(${t.id}))"><i class="ti ti-trash"></i></button>
     </div>
   </div>`;
 }
@@ -170,7 +170,7 @@ function openTaskModal(id){
     <div class="field" style="margin:0"><label>Link a customer <span class="optional-tag">optional</span></label><select id="tk-cust"><option value="">\u2014 none \u2014</option>${custOpts}</select></div>
     <p class="hint" style="margin-top:12px"><i class="ti ti-info-circle" style="font-size:13px;vertical-align:-1px"></i> Tasks with a date show up on your dashboard \u2014 and stay there as \u201cOverdue\u201d until you handle them.</p>
   </div>
-  <div class="sheet-foot">${id?`<button class="btn" style="margin-right:auto;color:var(--red)" onclick="deleteTask(${id})"><i class="ti ti-trash"></i> Delete</button>`:''}<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTask(${id||'null'})"><i class="ti ti-check"></i> ${id?'Save':'Add task'}</button></div>`);
+  <div class="sheet-foot">${id?`<button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmAction('Delete this task? This can’t be undone.',()=>deleteTask(${id}))"><i class="ti ti-trash"></i> Delete</button>`:''}<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTask(${id||'null'})"><i class="ti ti-check"></i> ${id?'Save':'Add task'}</button></div>`);
   setTimeout(()=>{const el=document.getElementById('tk-text');if(el){el.focus();}},60);
 }
 async function saveTask(id){
