@@ -78,7 +78,7 @@ function renderDashboard(){
     </div>
     <div class="card">
       <div class="eyebrow" style="margin-bottom:12px"><i class="ti ti-clock"></i> Coming up \u00b7 next 30 days</div>
-      ${upcoming.length?upcoming.map(t=>`<div class="list-row"><div style="min-width:0"><div class="lr-title">${nameOf(t.customer)}</div><div class="lr-sub">${t.kind==='service'?'Service due':'Callback'}</div></div><span class="cell-mono" style="color:var(--ink-500)">${fmtDate(t.date)}</span></div>`).join(''):'<p class="hint">Nothing coming up in the next 30 days.</p>'}
+      ${upcoming.length?upcoming.map(t=>`<div class="list-row"><div style="min-width:0"><div class="lr-title">${nameOf(t.customer)}</div><div class="lr-sub">${t.kind==='service'?'Service due':t.reason||'Callback'}</div></div><span class="cell-mono" style="color:var(--ink-500)">${fmtDate(t.date)}</span></div>`).join(''):'<p class="hint">Nothing coming up in the next 30 days.</p>'}
     </div>
   </div>`;
 }

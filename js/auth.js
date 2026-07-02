@@ -84,6 +84,7 @@ function applyRoleUI(){
     if(label.textContent.trim()==='Business')label.style.display=isOwner()?'':'none';
   });
   const loc=document.querySelector('.loc-switch');if(loc)loc.style.display=isOwner()?'':'none';
+  const sub=document.getElementById('brand-sub');if(sub)sub.style.display=isOwner()?'':'none';
   const actions=document.getElementById('topbar-actions');
   if(actions&&!document.getElementById('auth-user-chip')){
     actions.insertAdjacentHTML('afterend',`<div id="auth-user-chip" style="display:flex;align-items:center;gap:8px;margin-left:10px"><span class="badge badge-ink">${currentProfile?.name||currentProfile?.email||''}</span><button class="btn btn-sm" onclick="signOut()"><i class="ti ti-logout"></i> Sign out</button></div>`);

@@ -76,7 +76,7 @@ i.ti{display:inline-flex}
 *::-webkit-scrollbar-thumb:hover{background:var(--ink-300)}
 
 /* ============================================================ APP SHELL */
-.app{display:flex;height:100vh;min-height:560px;overflow:hidden}
+.app{display:flex;height:100vh;height:100dvh;min-height:560px;overflow:hidden}
 
 .sidebar{
   width:var(--sidebar-w);flex-shrink:0;
@@ -767,6 +767,20 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
 }
 .sj-job-pop-x i{font-size:14px}
 .sj-job-pop-x:hover{background:var(--line-2)}
+.addr-link{cursor:pointer;text-decoration:underline;text-underline-offset:2px;color:inherit;}
+.addr-link:hover{opacity:.75}
+.maps-chooser{
+  z-index:600;background:var(--surface);border:1px solid var(--line-2);
+  border-radius:var(--r-card);box-shadow:var(--sh-pop);
+  display:flex;flex-direction:column;min-width:170px;overflow:hidden;
+  animation:sheet-in .12s ease;
+}
+.maps-chooser a{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;
+  font-size:13.5px;font-weight:500;color:var(--ink-900);text-decoration:none;
+}
+.maps-chooser a:hover{background:var(--surface-2);}
+.maps-chooser a i{font-size:16px;color:var(--ink-500);}
 .sj-mob-tabs{display:none}
 .sj-tab{
   flex:1;padding:12px 8px;border:none;background:transparent;

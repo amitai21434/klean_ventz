@@ -46,7 +46,26 @@ function runConfirmedAction(){
   if(fn)fn();
 }
 function mapsUrl(address){return 'https://maps.google.com/?q='+encodeURIComponent(address);}
-function addressLink(address){return address?`<a href="${mapsUrl(address)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:inherit;text-decoration:underline">${tEsc(address)}</a>`:'No address on file';}
+function addressLink(address){
+  if(!address)return 'No address on file';
+  const ea=encodeURIComponent(address);
+  return `<span class="addr-link" onclick="event.stopPropagation();showMapsChooser(event,'${address.replace(/'/g,"\\'")}')"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px;margin-right:2px"></i>${tEsc(address)}</span>`;
+}
+function showMapsChooser(evt,address){
+  document.querySelectorAll('.maps-chooser').forEach(el=>el.remove());
+  const ea=encodeURIComponent(address);
+  const pop=document.createElement('div');
+  pop.className='maps-chooser';
+  pop.innerHTML=`
+    <a href="https://maps.google.com/?q=${ea}" target="_blank" rel="noopener"><i class="ti ti-brand-google-maps"></i> Google Maps</a>
+    <a href="https://maps.apple.com/?q=${ea}" target="_blank" rel="noopener"><i class="ti ti-map-2"></i> Apple Maps</a>
+    <a href="https://waze.com/ul?q=${ea}&navigate=yes" target="_blank" rel="noopener"><i class="ti ti-navigation"></i> Waze</a>`;
+  const r=evt.target.closest('.addr-link').getBoundingClientRect();
+  pop.style.cssText=`position:fixed;left:${r.left}px;top:${r.bottom+6}px;`;
+  document.body.appendChild(pop);
+  const close=e=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',close);}};
+  setTimeout(()=>document.addEventListener('click',close),10);
+}
 
 /* nav drawer (mobile) */
 function toggleNav(){document.getElementById('app').classList.toggle('nav-open');}
@@ -58,7 +77,7 @@ function openLogOutcome(custId,reminderId){
   showModal(`${headX('Log call','How did the call with '+nameOf(c)+' go?')}
   <div class="sheet-body">
     <div class="choice" onclick="logNoAnswer(${custId},${reminderId||'null'})"><i class="ti ti-phone-x lead" style="color:var(--amber)"></i><div><div class="choice-title">No answer / left voicemail</div><div class="choice-sub">Sets a follow-up reminder for one week from today</div></div></div>
-    <div class="choice" style="align-items:flex-start" onclick="document.getElementById('cb-wrap').style.display='block';this.style.borderColor='var(--ink-900)'"><i class="ti ti-calendar-clock lead" style="color:var(--ink-700)"></i><div style="flex:1"><div class="choice-title">Call back later</div><div class="choice-sub">Customer asked you to reach out on a specific date</div><div id="cb-wrap" style="display:none;margin-top:11px"><input type="date" id="cb-date" value="${addDays(dOff(0),180)}" style="margin-bottom:9px"><button class="btn btn-sm btn-primary" onclick="logCallback(${custId},${reminderId||'null'})">Set callback reminder</button></div></div></div>
+    <div class="choice" style="align-items:flex-start" onclick="document.getElementById('cb-wrap').style.display='block';this.style.borderColor='var(--ink-900)'"><i class="ti ti-calendar-clock lead" style="color:var(--ink-700)"></i><div style="flex:1"><div class="choice-title">Call back later</div><div class="choice-sub">Customer asked you to reach out on a specific date</div><div id="cb-wrap" style="display:none;margin-top:11px"><div style="display:flex;gap:8px;margin-bottom:9px"><input type="date" id="cb-date" value="${addDays(dOff(0),7)}" style="flex:1"><input type="time" id="cb-time" value="" placeholder="Time (optional)" style="flex:1"></div><button class="btn btn-sm btn-primary" onclick="logCallback(${custId},${reminderId||'null'})">Set callback reminder</button></div></div></div>
     <div class="choice" onclick="closeModal();openScheduleJobForCustomer(${custId})"><i class="ti ti-calendar-check lead" style="color:var(--green)"></i><div><div class="choice-title">Ready to schedule</div><div class="choice-sub">Book the job now</div></div></div>
     <div style="margin-top:10px;text-align:center"><button class="btn btn-sm btn-ghost" onclick="logDismiss(${custId},${reminderId||'null'})">Dismiss for now</button></div>
   </div>`);
@@ -112,10 +131,12 @@ async function logNoAnswer(custId,reminderId){
 }
 async function logCallback(custId,reminderId){
   const d=document.getElementById('cb-date').value;if(!d)return toast('Pick a date');
+  const t=document.getElementById('cb-time').value;
+  const reason=t?'Callback at '+fmtTime(t):'Callback - customer requested';
   try{
-    await upsertReminder(custId,d,'Callback - customer requested',reminderId);
+    await upsertReminder(custId,d,reason,reminderId);
     const c=customers.find(x=>x.id===custId);if(c)await updateCustomerFields(c,{snoozeUntil:null});
-    closeModal();toast('Callback reminder set for '+fmtDate(d));showView('dashboard');
+    closeModal();toast('Callback reminder set for '+fmtDate(d)+(t?' at '+fmtTime(t):''));showView('dashboard');
   }catch(err){console.error('logCallback error',err);toast('Error saving reminder');}
 }
 async function logDismiss(custId,reminderId){
@@ -178,7 +199,7 @@ function openNewCustomer(){
     </div>
     <div class="section-title" style="margin-top:8px">Customer</div>
     <div class="field-row"><div class="field" style="margin:0"><label>First name</label><input type="text" id="nc-first" placeholder="Jane"></div><div class="field" style="margin:0"><label>Last name</label><input type="text" id="nc-last" placeholder="Smith"></div></div>
-    <div class="field-row"><div class="field" style="margin:0"><label>Phone number</label><input type="tel" id="nc-phone" placeholder="(732) 555-0000"></div><div class="field" style="margin:0"><label>Second phone <span class="optional-tag">optional</span></label><input type="tel" id="nc-phone2" placeholder="(732) 555-0001"></div></div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Phone number</label><input type="tel" id="nc-phone" placeholder="(732) 555-0000"></div><div class="field" style="margin:0"><label>Second phone <span class="optional-tag">optional</span></label><input type="tel" id="nc-phone2" placeholder="(732) 555-0001"><input type="text" id="nc-phone2-label" placeholder="Label: Spouse, Work…" style="margin-top:6px;font-size:12px"></div></div>
     <div class="field"><label>Email</label><input type="email" id="nc-email" placeholder="jane@email.com"></div>
     <div class="field addr-wrap"><label>Address <span class="optional-tag">populates from Google Maps</span></label><input type="text" id="nc-addr" placeholder="123 Main St, City, NJ" autocomplete="off" oninput="addrInput(this.value)" onblur="setTimeout(hideAddrSug,200)"><div id="addr-suggestions" class="addr-suggestions" style="display:none"></div></div>
     <div class="field"><label>Lead source(s) <span class="optional-tag">how did they hear about us \u2014 pick one or more</span></label>${msMount('nc-ls',[])}</div>
@@ -186,7 +207,7 @@ function openNewCustomer(){
     <div class="section-title" style="margin-top:14px">Notes</div>
     <div class="field" style="margin:0"><textarea id="nc-notes" placeholder="Gate code, dog in yard, access instructions\u2026"></textarea></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveNewCustomerAndBook(this)"><i class="ti ti-calendar-plus"></i> Save & book</button><button class="btn btn-primary" onclick="saveNewCustomer(this)"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveNewCustomerAndLog(this)"><i class="ti ti-notes"></i> Save & log call</button><button class="btn" onclick="saveNewCustomerAndBook(this)"><i class="ti ti-calendar-plus"></i> Save & book</button><button class="btn btn-primary" onclick="saveNewCustomer(this)"><i class="ti ti-user-plus"></i> Save customer</button></div>`);
 }
 let googleMapsLoadPromise=null,googleAutocompleteService=null,addrSearchTimer=null,addrSearchSeq=0;
 function addrEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -260,6 +281,7 @@ function saveNewCustomer(btn){
       lastName: lastName,
       phone: document.getElementById('nc-phone').value,
       phone2: document.getElementById('nc-phone2').value,
+      phone2Label: document.getElementById('nc-phone2-label').value,
       email: document.getElementById('nc-email').value,
       address: document.getElementById('nc-addr').value,
       leadSources: (leadSources||[]),
@@ -300,6 +322,7 @@ function saveNewCustomerAndBook(btn){
       lastName: lastName,
       phone: document.getElementById('nc-phone').value,
       phone2: document.getElementById('nc-phone2').value,
+      phone2Label: document.getElementById('nc-phone2-label').value,
       email: document.getElementById('nc-email').value,
       address: document.getElementById('nc-addr').value,
       leadSources: (leadSources||[]),
@@ -328,6 +351,38 @@ function saveNewCustomerAndBook(btn){
   })();
 }
 
+function saveNewCustomerAndLog(btn){
+  (async function(){
+    const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
+    const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
+    if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
+    const leadSources=msGet('nc-ls');
+    const payload={
+      isCompany,contactName,contactPhone:document.getElementById('nc-contactphone').value,
+      firstName,lastName,
+      phone:document.getElementById('nc-phone').value,
+      phone2:document.getElementById('nc-phone2').value,
+      phone2Label:document.getElementById('nc-phone2-label').value,
+      email:document.getElementById('nc-email').value,
+      address:document.getElementById('nc-addr').value,
+      leadSources:(leadSources||[]),
+      notes:document.getElementById('nc-notes').value,
+      lastService:null,nextDue:null,nextServiceMonths:12,snoozeUntil:null,location:activeLoc
+    };
+    setBtnLoading(btn,true,'Saving…');
+    try{
+      const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
+      const json=await resp.json();const created=Array.isArray(json)?json[0]:json;
+      if(created){
+        customers.push(created);nextCustId=Math.max(nextCustId,(created.id||0)+1);
+        closeModal();openLogOutcome(created.id,null);
+      }else{throw new Error('No customer returned');}
+    }catch(err){console.error('saveNewCustomerAndLog error',err);toast('Error saving customer');}
+    finally{setBtnLoading(btn,false);}
+  })();
+}
+
 /* ---------------------------------------------------------- CUSTOMER DETAIL */
 function openCustomer(id){
   const c=customers.find(x=>x.id===id);if(!c)return;
@@ -346,7 +401,7 @@ function openCustomer(id){
     ${c.isCompany?`<div class="section-title">Company / landlord</div><div class="field-row"><div class="field" style="margin:0"><label>Contact name</label><input type="text" value="${c.contactName||''}" onchange="updateCust(${c.id},'contactName',this.value)"></div><div class="field" style="margin:0"><label>Contact phone</label><input type="tel" value="${c.contactPhone||''}" onchange="updateCust(${c.id},'contactPhone',this.value)"></div></div>`:''}
     <div class="section-title" ${c.isCompany?'style="margin-top:16px"':''}>Customer details</div>
     <div class="field-row"><div class="field" style="margin:0"><label>First name</label><input type="text" value="${c.firstName}" onchange="updateCust(${c.id},'firstName',this.value)"></div><div class="field" style="margin:0"><label>Last name</label><input type="text" value="${c.lastName}" onchange="updateCust(${c.id},'lastName',this.value)"></div></div>
-    <div class="field-row"><div class="field" style="margin:0"><label>Phone</label><input type="tel" value="${c.phone}" onchange="updateCust(${c.id},'phone',this.value)"></div><div class="field" style="margin:0"><label>Second phone</label><input type="tel" value="${c.phone2||''}" onchange="updateCust(${c.id},'phone2',this.value)" placeholder="\u2014"></div></div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Phone</label><input type="tel" value="${c.phone}" onchange="updateCust(${c.id},'phone',this.value)"></div><div class="field" style="margin:0"><label>Second phone</label><input type="tel" value="${c.phone2||''}" onchange="updateCust(${c.id},'phone2',this.value)" placeholder="\u2014"><input type="text" value="${esc(c.phone2Label||'')}" onchange="updateCust(${c.id},'phone2Label',this.value)" placeholder="Label: Spouse, Work\u2026" style="margin-top:6px;font-size:12px"></div></div>
     <div class="field"><label>Email</label><input type="email" value="${c.email}" onchange="updateCust(${c.id},'email',this.value)"></div>
     <div class="field"><label>Address</label><input type="text" value="${c.address}" onchange="updateCust(${c.id},'address',this.value)"></div>
     <div class="field"><label>Lead source(s) <span class="optional-tag">how did they hear about us</span></label>${msMount('custls'+c.id,c.leadSources||[],c.id)}</div>
@@ -439,7 +494,7 @@ function renderSjCustInfo(){
     <i class="ti ti-user-check"></i>
     <div style="flex:1;min-width:0">
       <div style="font-weight:700;color:var(--ink-900)">${tEsc(nameOf(c))}${c.isCompany&&c.contactName?' <span class="cell-sub">\u00b7 '+tEsc(c.contactName)+'</span>':''}</div>
-      <div class="cell-sub" style="margin-top:2px">${tEsc(c.phone||'\u2014')}${c.phone2?' \u00b7 '+tEsc(c.phone2):''}</div>
+      <div class="cell-sub" style="margin-top:2px">${tEsc(c.phone||'\u2014')}${c.phone2?' \u00b7 '+tEsc(c.phone2)+(c.phone2Label?' ('+tEsc(c.phone2Label)+')':''):''}</div>
       <div class="cell-sub">${tEsc(c.address||'No address on file')}</div>
       ${c.email?`<div class="cell-sub">${tEsc(c.email)}</div>`:''}
       ${c.nextDue?`<div class="cell-sub" style="margin-top:4px">Next due ${fmtDate(c.nextDue)}</div>`:''}
@@ -677,7 +732,7 @@ function openCompleteJob(id){
   showModal(`${headX('Complete job',nameOf(cc))}
   <div class="sheet-body">
     <div class="callout callout-green" style="margin-bottom:14px"><i class="ti ti-calendar-check"></i><div><strong>${fmtDate(j.date)} \u00b7 <span id="cs-time-range">${timeRangeLabel(j.time,j.durationHours||2)}</span></strong><div style="color:var(--ink-500);margin-top:1px"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${addressLink(cc.address)}${cc.phone?' \u00b7 '+cc.phone:''}</div></div></div>
-    <div class="field"><label>Job length</label><div class="segmented" id="cs-duration">${durationButtons(j.durationHours||2,'csSetDuration')}</div></div>
+    <div class="field"><label>Job length <span class="optional-tag">set at booking</span></label><div class="callout callout-ink" style="padding:8px 12px;font-weight:600">${j.durationHours||2} hour${(j.durationHours||2)!==1?'s':''}</div></div>
     <div class="section-title">Services performed</div>
     ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${j.services.includes(s.id)?'checked':''} onchange="recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
     <div class="surcharge-box"><input type="checkbox" id="cs-surcharge" ${j.surcharge?'checked':''} onchange="recalcCompleteTotal()"><label>Above 2nd floor surcharge</label><input type="number" id="cs-surcharge-amt" value="${j.surchargeAmt||''}" placeholder="$0" oninput="recalcCompleteTotal()"></div>
@@ -690,11 +745,13 @@ function openCompleteJob(id){
     <label style="display:block;margin-bottom:7px">Payment method</label>
     <div class="pay-opts">${PAYMENT_METHODS.map(m=>`<div class="pay-opt" id="pay-${m}" onclick="selectPay('${m}')">${m}</div>`).join('')}</div>
     <div class="section-title" style="margin-top:18px">Job record</div>
+    ${cc.notes?`<div class="callout callout-ink" style="margin-bottom:10px"><i class="ti ti-user"></i><div><strong>Customer note:</strong> ${esc(cc.notes)}</div></div>`:''}
+    ${j.notes?`<div class="callout callout-ink" style="margin-bottom:10px"><i class="ti ti-clipboard"></i><div><strong>Job note:</strong> ${esc(j.notes)}</div></div>`:''}
     <div class="field"><label>Tech notes</label><textarea id="cs-notes" placeholder="What you found, what you did\u2026">${j.techNotes||''}</textarea></div>
     <div class="field"><label>Photos <span class="optional-tag">before / after</span></label>${j.photos&&j.photos.length?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${j.photos.map(url=>`<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('')}</div>`:''}<input type="file" id="cs-photos" accept="image/*" multiple onchange="previewSelectedPhotos(this)"><div id="cs-photos-preview" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div></div>
     <div class="field" style="margin:0"><label>Next service due in</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${(j.nextServiceMonths||12)===m?'selected':''}>${m} months</option>`).join('')}</select></div>
   </div>
-  <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteJob(${id},false)"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn btn-success" onclick="completeJob(${id},this)"><i class="ti ti-check"></i> Complete & send receipt</button></div>`);
+  <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteJob(${id},false)"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="openRescheduleJob(${id})"><i class="ti ti-calendar-repeat"></i> Reschedule</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn" onclick="completeJob(${id},this,true)"><i class="ti ti-check"></i> Complete only</button><button class="btn btn-success" id="cs-complete-btn" onclick="completeJob(${id},this,false)"><i class="ti ti-check"></i> Complete &amp; send ${j.payment==='Invoice'?'invoice':'receipt'}</button></div>`);
 }
 function recalcCompleteTotal(){
   let t=0;
@@ -703,7 +760,7 @@ function recalcCompleteTotal(){
   if(document.getElementById('cs-surcharge')?.checked)t+=parseFloat(document.getElementById('cs-surcharge-amt').value)||0;
   const el=document.getElementById('cs-total');if(el)el.value=t;updateNet();
 }
-function selectPay(m){selectedPayment=m;document.querySelectorAll('.pay-opt').forEach(el=>el.classList.remove('selected'));const el=document.getElementById('pay-'+m);if(el)el.classList.add('selected');}
+function selectPay(m){selectedPayment=m;document.querySelectorAll('.pay-opt').forEach(el=>el.classList.remove('selected'));const el=document.getElementById('pay-'+m);if(el)el.classList.add('selected');const cb=document.getElementById('cs-complete-btn');if(cb)cb.innerHTML=`<i class="ti ti-check"></i> Complete &amp; send ${m==='Invoice'?'invoice':'receipt'}`;}
 function updateNet(){const t=parseFloat(document.getElementById('cs-total').value)||0;const d=parseFloat(document.getElementById('cs-discount').value)||0;const el=document.getElementById('cs-net');if(el)el.textContent=money2(Math.max(0,t-d));}
 function hydrateJobModal(j){
   j.services=SERVICES.filter(s=>document.getElementById('cs-'+s.id)?.checked).map(s=>s.id);
@@ -801,7 +858,7 @@ async function saveJobEdits(id,btn){
   finally{setBtnLoading(btn,false);}
 }
 
-async function completeJob(id,btn){
+async function completeJob(id,btn,skipEmail=false){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   setBtnLoading(btn,true,'Completing…');
   try{
@@ -841,11 +898,44 @@ async function completeJob(id,btn){
       });
     }
     await clearCustomerReminders(j.customerId);
-    const emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
-    closeModal();toast(emailSent?(selectedPayment&&selectedPayment!=='Invoice'?'Complete - receipt & review sent':'Complete - invoice & review sent'):'Complete - email not sent');showView('jobs');showSuccessFlourish();
+    let emailSent=false;
+    if(!skipEmail)emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
+    const isInv=selectedPayment==='Invoice';
+    closeModal();
+    toast(skipEmail?'Job completed — no email sent':(emailSent?(isInv?'Complete — invoice & review sent':'Complete — receipt & review sent'):'Complete — email not sent'));
+    showView('jobs');showSuccessFlourish();
   }catch(err){console.error('completeJob error',err);toast('Error completing job');}
   finally{setBtnLoading(btn,false);}
 }
+function openRescheduleJob(id){
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  const cc=customers.find(x=>x.id===j.customerId)||{};
+  showModal(`${headX('Reschedule job',nameOf(cc))}
+  <div class="sheet-body">
+    <div class="callout callout-ink" style="margin-bottom:14px"><i class="ti ti-calendar-event"></i><div>Currently scheduled: <strong>${fmtDate(j.date)} at ${fmtTime(j.time)}</strong></div></div>
+    <div class="field-row">
+      <div class="field" style="margin:0"><label>New date</label><input type="date" id="rs-date" value="${j.date}"></div>
+      <div class="field" style="margin:0"><label>New time</label><input type="time" id="rs-time" value="${j.time}"></div>
+    </div>
+  </div>
+  <div class="sheet-foot"><button class="btn" onclick="closeModal();openJob(${id})">Back</button><button class="btn btn-primary" onclick="saveReschedule(${id},this)"><i class="ti ti-calendar-check"></i> Confirm reschedule</button></div>`);
+}
+async function saveReschedule(id,btn){
+  const date=document.getElementById('rs-date').value;
+  const time=document.getElementById('rs-time').value;
+  if(!date||!time)return toast('Pick a date and time');
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  setBtnLoading(btn,true,'Saving…');
+  try{
+    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...j,date,time})});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reschedule failed');}
+    const updated=await resp.json();const u=Array.isArray(updated)?updated[0]:updated;
+    if(u){const idx=jobs.findIndex(x=>x.id===id);if(idx>=0)jobs[idx]=u;}
+    closeModal();toast('Job rescheduled to '+fmtDate(date));showView(currentView);
+  }catch(err){console.error('saveReschedule error',err);toast('Error rescheduling job');}
+  finally{setBtnLoading(btn,false);}
+}
+
 function openCompletedJob(j){
   const cc=customers.find(x=>x.id===j.customerId)||{};
   const sentLine=j.payment&&j.payment!=='Invoice'?'Receipt &amp; review request':'Invoice &amp; review request';
@@ -861,6 +951,8 @@ function openCompletedJob(j){
       ${j.products.length?`<div><span class="cell-sub">Products</span><div style="font-weight:600">${j.products.map(svcName).join(', ')}</div></div>`:''}
       ${j.discount?`<div><span class="cell-sub">Discount</span><div style="font-weight:600;color:var(--red)">-${money(j.discount)}${j.discountReason?' ('+j.discountReason+')':''}</div></div>`:''}
       <div><span class="cell-sub">Payment</span><div style="font-weight:600">${j.payment||'\u2014'}</div></div>
+      ${cc.notes?`<div><span class="cell-sub">Customer note</span><div style="font-weight:600">${esc(cc.notes)}</div></div>`:''}
+      ${j.notes?`<div><span class="cell-sub">Job note</span><div style="font-weight:600">${esc(j.notes)}</div></div>`:''}
       ${j.techNotes?`<div><span class="cell-sub">Tech notes</span><div style="font-weight:600">${j.techNotes}</div></div>`:''}
       ${j.photos&&j.photos.length?`<div><span class="cell-sub">Photos</span><div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap">${j.photos.map(url=>`<a href="${url}" target="_blank" rel="noopener"><img src="${url}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)" alt="Job photo"></a>`).join('')}</div></div>`:''}
       <div><span class="cell-sub">Next service due</span><div style="font-weight:600">${j.nextServiceMonths} months \u00b7 ${cc.nextDue?fmtDate(cc.nextDue):'\u2014'}</div></div>
