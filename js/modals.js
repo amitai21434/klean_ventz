@@ -530,17 +530,17 @@ function renderSjMonth(){
 
 function renderSjWeek(){
   const start=weekStartKey(SJ_CAL_DATE);
-  const days=[];for(let i=0;i<7;i++)days.push(addDays(start,i));
+  const days=[];for(let i=0;i<6;i++)days.push(addDays(start,i));
   const H0=7,HH=48,GUT=44,COLW=118;
   const dayEvs=days.map(k=>layoutDay(jobs.filter(j=>j.date===k)));
   const maxEnd=dayEvs.reduce((m,evs)=>evs.reduce((mm,e)=>Math.max(mm,e.end),m),H0*60);
   const H1=Math.max(20,Math.ceil(maxEnd/60));
-  const totalW=GUT+7*COLW;const totalH=(H1-H0)*HH+10;
+  const totalW=GUT+6*COLW;const totalH=(H1-H0)*HH+10;
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const todayKey=dOff(0);
   let header=`<div style="display:flex;width:${totalW}px"><div style="width:${GUT}px;flex-shrink:0"></div>`+days.map((k,i)=>{const dp=k.split('-');const isT=k===todayKey;return `<div onclick="sjOpenCalDay('${k}')" style="width:${COLW}px;flex-shrink:0;text-align:center;cursor:pointer;padding:5px 0;border-radius:8px;${isT?'background:var(--ink-900);color:#fff':''}"><div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;${isT?'color:#fff':'color:var(--ink-400)'}">${dayNames[i]}</div><div class="cell-mono" style="font-size:13px;font-weight:600;margin-top:1px">${parseInt(dp[2])}</div></div>`;}).join('')+'</div>';
   let grid='';
   for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?'a':'p');grid+=`<div style="position:absolute;top:${top}px;left:0;width:${totalW}px;border-top:1px solid var(--line)"></div><div class="cell-mono" style="position:absolute;top:${top-6}px;left:0;width:${GUT-6}px;text-align:right;font-size:9px;color:var(--ink-400)">${label}</div>`;}
-  let seps='';for(let i=0;i<7;i++){const left=GUT+i*COLW;seps+=`<div style="position:absolute;top:0;bottom:0;left:${left}px;border-left:1px solid var(--line)"></div>`;}
+  let seps='';for(let i=0;i<6;i++){const left=GUT+i*COLW;seps+=`<div style="position:absolute;top:0;bottom:0;left:${left}px;border-left:1px solid var(--line)"></div>`;}
   let blocks='';
   days.forEach((k,di)=>{const evs=dayEvs[di];evs.forEach(e=>{const j=e.job;const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(j.durationHours||2)*HH-3;const cw=COLW/e.cols;const left=GUT+di*COLW+e.col*cw+1;const w=cw-3;blocks+=`<div class="cal-event${j.status==='completed'?' done':''}" onclick="sjShowJobPop(${j.id},event)" style="top:${top}px;left:${left}px;width:${w}px;height:${height}px;padding:3px 5px"><div class="cal-event-time" style="color:${j.status==='completed'?'var(--green)':'var(--ink-900)'};font-size:9.5px">${fmtTime(j.time)}</div><div class="cal-event-name" style="font-size:10.5px">${j.customerName}</div></div>`;});});
   return `<div class="sj-cal-head"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-sm btn-icon" onclick="sjCalNavWeek(-1)"><i class="ti ti-chevron-left"></i></button><h3 style="font-size:13px;font-weight:700;letter-spacing:-.01em">${fmtDate(start)} \u2013 ${fmtDate(addDays(start,6))}</h3><button class="btn btn-sm btn-icon" onclick="sjCalNavWeek(1)"><i class="ti ti-chevron-right"></i></button><button class="btn btn-sm" onclick="sjCalToday()">Today</button></div>${sjCalToggle('week')}</div><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px"><div style="min-width:${totalW}px">${header}<div style="position:relative;height:${totalH}px;margin-top:4px">${grid}${seps}${blocks}</div></div></div>`;
