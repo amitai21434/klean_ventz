@@ -45,8 +45,8 @@ function taskSort(a,b){
 }
 
 /* ---------------------------------------------------------- PAGE */
-function renderTasks(){
-  const open=tasks.filter(t=>!t.done).sort(taskSort);
+function taskGroupCards(taskList,emptyMsg){
+  const open=taskList.filter(t=>!t.done).sort(taskSort);
   const groups=[
     ['overdue','Overdue','ti-alert-triangle'],
     ['today','Today','ti-clock-hour-4'],
@@ -57,21 +57,42 @@ function renderTasks(){
   groups.forEach(([key,label,icon])=>{
     const items=open.filter(t=>taskState(t)===key);
     if(!items.length)return;
-    lists+=`<div class="card"><div class="card-head" style="margin-bottom:6px"><div class="eyebrow ${key==='overdue'?'':''}" style="${key==='overdue'?'color:var(--red)':''}"><i class="ti ${icon}" ${key==='overdue'?'style="color:var(--red)"':''}></i> ${label}</div><span class="badge ${key==='overdue'?'badge-red':'badge-ink'}">${items.length}</span></div>${items.map(taskListRow).join('')}</div>`;
+    lists+=`<div class="card"><div class="card-head" style="margin-bottom:6px"><div class="eyebrow" style="${key==='overdue'?'color:var(--red)':''}"><i class="ti ${icon}" ${key==='overdue'?'style="color:var(--red)"':''}></i> ${label}</div><span class="badge ${key==='overdue'?'badge-red':'badge-ink'}">${items.length}</span></div>${items.map(taskListRow).join('')}</div>`;
   });
   if(!open.length){
-    lists=`<div class="card"><div class="empty"><i class="ti ti-checklist"></i>No tasks yet. Add your first one above \u2014 anything you need to remember to do.</div></div>`;
+    lists=`<div class="card"><div class="empty"><i class="ti ti-checklist"></i>${emptyMsg||'No tasks.'}</div></div>`;
   }
-  return `
-  <div class="card">
+  return lists;
+}
+
+function renderTasks(){
+  const quickAdd=`<div class="card">
     <div class="eyebrow" style="margin-bottom:12px"><i class="ti ti-plus"></i> Quick add</div>
     <div class="task-quickadd">
       <input type="text" id="task-quick-input" placeholder="What do you need to do? (e.g. Call the ad agency)" onkeydown="if(event.key==='Enter')quickAddTask('task-quick-input')">
       <button class="btn btn-primary" onclick="quickAddTask('task-quick-input')"><i class="ti ti-plus"></i> Add</button>
     </div>
     <p class="hint" style="margin-top:10px">Added with today\u2019s date. Tap a task to set a date, time, or link a customer.</p>
-  </div>
-  ${lists}`;
+  </div>`;
+
+  if(typeof isOwner==='function'&&isOwner()&&CRM_USERS.length>1){
+    const myId=typeof currentProfile!=='undefined'&&currentProfile?currentProfile.id:null;
+    const workers=CRM_USERS.filter(u=>u.id!==myId);
+    const myTasks=tasks.filter(t=>!t.assignedTo||t.assignedTo===myId);
+    let workerCols='';
+    workers.forEach(w=>{
+      const wTasks=tasks.filter(t=>t.assignedTo===w.id);
+      const wName=w.name||w.email||'Worker';
+      workerCols+=`<div><div class="section-title" style="margin-bottom:10px"><i class="ti ti-user"></i> ${tEsc(wName)}</div>${taskGroupCards(wTasks,'No tasks assigned to '+tEsc(wName)+'.')}</div>`;
+    });
+    return `${quickAdd}
+    <div class="grid2" style="align-items:start;margin-top:0">
+      <div><div class="section-title" style="margin-bottom:10px"><i class="ti ti-user-circle"></i> My tasks</div>${taskGroupCards(myTasks,'No tasks yet. Add your first one above.')}</div>
+      <div>${workerCols||'<div class="card"><div class="empty"><i class="ti ti-users"></i>No workers yet. Add workers in Settings.</div></div>'}</div>
+    </div>`;
+  }
+
+  return `${quickAdd}${taskGroupCards(tasks,'No tasks yet. Add your first one above \u2014 anything you need to remember to do.')}`;
 }
 
 function taskListRow(t){
@@ -118,7 +139,8 @@ function taskPayloadFromTask(t){
     customerId:t.customerId||null,
     contact:t.contact||'',
     done:!!t.done,
-    location:t.location||activeLoc
+    location:t.location||activeLoc,
+    assignedTo:t.assignedTo||null
   };
 }
 function firstReturned(json){return Array.isArray(json)?json[0]:json;}
@@ -168,6 +190,7 @@ function openTaskModal(id){
     </div>
     <div class="field"><label>Phone or email <span class="optional-tag">optional - tap to call or email</span></label><input type="text" id="tk-contact" value="${t?tAttr(t.contact||''):''}" placeholder="(732) 555-0000  or  name@company.com"></div>
     <div class="field" style="margin:0"><label>Link a customer <span class="optional-tag">optional</span></label><select id="tk-cust"><option value="">\u2014 none \u2014</option>${custOpts}</select></div>
+    ${(typeof isOwner==='function'&&isOwner()&&CRM_USERS.length>1)?`<div class="field" style="margin-top:10px;margin-bottom:0"><label>Assign to <span class="optional-tag">optional</span></label><select id="tk-assign"><option value="">\u2014 myself \u2014</option>${CRM_USERS.filter(u=>u.id!==(typeof currentProfile!=='undefined'&&currentProfile?currentProfile.id:null)).map(u=>`<option value="${u.id}" ${t&&t.assignedTo===u.id?'selected':''}>${tEsc(u.name||u.email||'Worker')}</option>`).join('')}</select></div>`:''}
     <p class="hint" style="margin-top:12px"><i class="ti ti-info-circle" style="font-size:13px;vertical-align:-1px"></i> Tasks with a date show up on your dashboard \u2014 and stay there as \u201cOverdue\u201d until you handle them.</p>
   </div>
   <div class="sheet-foot">${id?`<button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmAction('Delete this task? This can’t be undone.',()=>deleteTask(${id}))"><i class="ti ti-trash"></i> Delete</button>`:''}<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTask(${id||'null'})"><i class="ti ti-check"></i> ${id?'Save':'Add task'}</button></div>`);
@@ -181,14 +204,16 @@ async function saveTask(id){
   const cv=document.getElementById('tk-cust').value;
   const customerId=cv?parseInt(cv):null;
   const contact=document.getElementById('tk-contact').value.trim();
+  const assignEl=document.getElementById('tk-assign');
+  const assignedTo=assignEl?assignEl.value||null:null;
   try{
     if(id){
       const t=tasks.find(x=>x.id===id);
-      const payload=taskPayloadFromTask(Object.assign({},t||{}, {text,date,time,customerId,contact}));
+      const payload=taskPayloadFromTask(Object.assign({},t||{},{text,date,time,customerId,contact,assignedTo}));
       await updateTask(id,payload);
       toast('Task saved');
     }else{
-      await createTask({text,date:date||null,time:time||null,customerId,contact,done:false,location:activeLoc});
+      await createTask({text,date:date||null,time:time||null,customerId,contact,done:false,location:activeLoc,assignedTo});
       toast('Task added');
     }
     closeModal();showView(currentView);

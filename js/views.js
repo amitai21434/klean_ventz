@@ -252,30 +252,66 @@ function exportFinancialsCsv(){
 }
 
 /* ---------------------------------------------------------- CATALOG */
+let _catDragType=null,_catDragId=null;
 function renderCatalog(){
   return `
-  <div class="card">
-    <div class="card-head"><div class="eyebrow"><i class="ti ti-tools"></i> Services</div><button class="btn btn-sm" onclick="addCatalogItem('service')"><i class="ti ti-plus"></i> Add service</button></div>
-    <p class="hint" style="margin-bottom:14px">Set what you charge and what each one costs you. Margin updates automatically and feeds the dashboard profit.</p>
-    <div class="cat-head"><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
+  <div class=”card”>
+    <div class=”card-head”><div class=”eyebrow”><i class=”ti ti-tools”></i> Services</div><button class=”btn btn-sm” onclick=”addCatalogItem('service')”><i class=”ti ti-plus”></i> Add service</button></div>
+    <p class=”hint” style=”margin-bottom:14px”>Set what you charge and your costs. Labor = worker pay per service. Material = parts/supplies cost.</p>
+    <div class=”cat-head cat-head-svc”><span></span><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
     ${SERVICES.map(s=>catalogRow('service',s)).join('')}
   </div>
-  <div class="card">
-    <div class="card-head"><div class="eyebrow"><i class="ti ti-package"></i> Products</div><button class="btn btn-sm" onclick="addCatalogItem('product')"><i class="ti ti-plus"></i> Add product</button></div>
-    <div class="cat-head"><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
+  <div class=”card”>
+    <div class=”card-head”><div class=”eyebrow”><i class=”ti ti-package”></i> Products</div><button class=”btn btn-sm” onclick=”addCatalogItem('product')”><i class=”ti ti-plus”></i> Add product</button></div>
+    <div class=”cat-head”><span></span><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
     ${PRODUCTS.map(p=>catalogRow('product',p)).join('')}
   </div>`;
 }
 function catalogRow(type,it){
+  const nm=(it.name||'').replace(/”/g,'&quot;');
+  if(type==='service'){
+    const margin=(it.price||0)-(it.cost||0)-(it.laborCost||0);
+    return `<div class=”cat-row cat-row-svc” draggable=”true” data-type=”${type}” data-id=”${it.id}” ondragstart=”catDragStart(event,'${type}','${it.id}')” ondragend=”catDragEnd(event)” ondragover=”catDragOver(event)” ondragleave=”catDragLeave(event)” ondrop=”catDrop(event,'${type}','${it.id}')”>
+      <span class=”cat-drag-handle”><i class=”ti ti-grip-vertical”></i></span>
+      <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
+      <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
+      <input class=”cat-num” type=”number” value=”${it.laborCost||0}” onchange=”updateCatalog('${type}','${it.id}','laborCost',parseFloat(this.value)||0)”>
+      <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
+      <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
+      <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove \\”${nm}\\” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
+    </div>`;
+  }
   const margin=(it.price||0)-(it.cost||0);
-  const nm=(it.name||'').replace(/"/g,'&quot;');
-  return `<div class="cat-row">
-    <input class="cat-name" type="text" value="${nm}" onchange="updateCatalog('${type}','${it.id}','name',this.value)">
-    <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
-    <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
-    <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
-    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove “${nm}” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
+  return `<div class=”cat-row” draggable=”true” data-type=”${type}” data-id=”${it.id}” ondragstart=”catDragStart(event,'${type}','${it.id}')” ondragend=”catDragEnd(event)” ondragover=”catDragOver(event)” ondragleave=”catDragLeave(event)” ondrop=”catDrop(event,'${type}','${it.id}')”>
+    <span class=”cat-drag-handle”><i class=”ti ti-grip-vertical”></i></span>
+    <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
+    <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
+    <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
+    <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
+    <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove \\”${nm}\\” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
   </div>`;
+}
+function catDragStart(evt,type,id){_catDragType=type;_catDragId=id;evt.currentTarget.classList.add('dragging');}
+function catDragEnd(evt){evt.currentTarget.classList.remove('dragging');document.querySelectorAll('.cat-row.drag-over').forEach(el=>el.classList.remove('drag-over'));}
+function catDragOver(evt){evt.preventDefault();const row=evt.currentTarget;if(row.dataset.type===_catDragType)row.classList.add('drag-over');}
+function catDragLeave(evt){evt.currentTarget.classList.remove('drag-over');}
+function catDrop(evt,type,targetId){
+  evt.preventDefault();
+  evt.currentTarget.classList.remove('drag-over');
+  if(type!==_catDragType||_catDragId===targetId)return;
+  const arr=type==='service'?SERVICES:PRODUCTS;
+  const fromIdx=arr.findIndex(x=>String(x.id)===String(_catDragId));
+  const toIdx=arr.findIndex(x=>String(x.id)===String(targetId));
+  if(fromIdx<0||toIdx<0)return;
+  const [item]=arr.splice(fromIdx,1);arr.splice(toIdx,0,item);
+  saveCatalogOrder(type,arr);
+  showView('catalog');
+}
+function saveCatalogOrder(type,arr){
+  const key=type==='service'?'crm_serviceOrder':'crm_productOrder';
+  const ids=arr.map(x=>String(x.id));
+  localStorage.setItem(key,JSON.stringify(ids));
+  SETTINGS[type==='service'?'serviceOrder':'productOrder']=ids;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
 function catalogEndpoint(type){return type==='service'?API_BASE+'/api/services':API_BASE+'/api/products';}
@@ -290,7 +326,7 @@ async function updateCatalog(type,id,field,val){
   const it=catalogList(type).find(x=>String(x.id)===String(id));
   if(!it)return;
   try{
-    const payload={name:it.name,price:it.price||0,cost:it.cost||0};
+    const payload={name:it.name,price:it.price||0,cost:it.cost||0,...(type==='service'?{laborCost:it.laborCost||0}:{})};
     payload[field]=val;
     const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update failed');}
@@ -351,8 +387,16 @@ function renderSettings(){
         <div class="callout callout-green"><i class="ti ti-star"></i><div><strong>Review request</strong><div style="color:var(--ink-500);margin-top:1px">Sent with the receipt after payment</div></div></div>
       </div>
       <div class="card">
-        <div class="section-title"><i class="ti ti-route"></i> Lead sources</div>
-        <p class="hint" style="margin-bottom:12px">The “how did you hear about us” choices shown when adding a customer — ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
+        <div class=”section-title”><i class=”ti ti-message-2-code”></i> Email templates</div>
+        <p class=”hint” style=”margin-bottom:10px”>Customize the body text of automated emails. Available variables:</p>
+        <div class=”callout” style=”margin-bottom:12px;font-family:var(--font-mono);font-size:11.5px;line-height:1.8;color:var(--ink-700)”>{{customerName}} &middot; {{businessName}} &middot; {{date}} &middot; {{time}} &middot; {{services}} &middot; {{total}} &middot; {{reviewLink}}</div>
+        <div class=”field”><label>Confirmation email body</label><textarea id=”set-tpl-confirm” rows=”5” style=”font-size:13px”>${tEsc(SETTINGS.emailTplConfirm||'Hi {{customerName}}, your {{businessName}} appointment is confirmed for {{date}} at {{time}}.\n\nServices: {{services}}\n\nIf you need to make a change, just reply to this email or give us a call.')}</textarea></div>
+        <div class=”field”><label>Receipt / invoice email body</label><textarea id=”set-tpl-receipt” rows=”5” style=”font-size:13px”>${tEsc(SETTINGS.emailTplReceipt||'Hi {{customerName}}, your {{businessName}} job on {{date}} is complete. Your receipt is attached.\n\nIf you were happy with the service, we\'d really appreciate a quick Google review:\n{{reviewLink}}')}</textarea></div>
+        <button class=”btn btn-primary” onclick=”saveEmailTemplates(this)”><i class=”ti ti-check”></i> Save templates</button>
+      </div>
+      <div class=”card”>
+        <div class=”section-title”><i class=”ti ti-route”></i> Lead sources</div>
+        <p class=”hint” style=”margin-bottom:12px”>The “how did you hear about us” choices shown when adding a customer — ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
         <div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="new-lead-source" placeholder="Add a lead source\u2026" onkeydown="if(event.key==='Enter')addLeadSource()"><button class="btn" onclick="addLeadSource()"><i class="ti ti-plus"></i></button></div>
         <div id="lead-source-list" class="ls-manage">${LEAD_SOURCES.map(leadRow).join('')}</div>
       </div>
@@ -378,6 +422,21 @@ async function saveSettings(btn){
     toast('Settings saved');
     showView('settings');
   }catch(err){console.error('saveSettings error',err);toast('Error saving settings');}
+  finally{setBtnLoading(btn,false);}
+}
+async function saveEmailTemplates(btn){
+  const payload={
+    emailTplConfirm: document.getElementById('set-tpl-confirm').value,
+    emailTplReceipt: document.getElementById('set-tpl-receipt').value
+  };
+  setBtnLoading(btn,true,'Saving…');
+  try{
+    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
+    const updated=await resp.json();
+    SETTINGS={...SETTINGS,...updated};
+    toast('Email templates saved');
+  }catch(err){console.error('saveEmailTemplates error',err);toast('Error saving templates');}
   finally{setBtnLoading(btn,false);}
 }
 function renderPasswordSettings(){

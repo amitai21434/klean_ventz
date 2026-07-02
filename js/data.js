@@ -15,13 +15,15 @@ async function apiFetch(url,options={}){
 }
 
 let SETTINGS={businessName:'Klean Ventz',businessSub:'Dryer Vent Cleaning & Installation LLC',phone:'732-808-3637',website:'kleanventz.com',email:'',googleReviewUrl:GOOGLE_REVIEW_URL};
+function sortByOrder(arr,order){if(!order||!order.length)return arr;const strs=order.map(String);const map=new Map(arr.map(x=>[String(x.id),x]));const sorted=strs.map(id=>map.get(id)).filter(Boolean);arr.forEach(x=>{if(!strs.includes(String(x.id)))sorted.push(x);});return sorted;}
 
 let SERVICES = [];
 let PRODUCTS = [];
 let LEAD_SOURCE_ROWS = [];
+let CRM_USERS = [];
 
 function qtyOf(j,id){return (j.serviceQtys&&j.serviceQtys[id])||1;}
-function jobCost(j){let t=0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=(s.cost||0)*qtyOf(j,id);});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.cost||0;});return t;}
+function jobCost(j){let t=0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=((s.cost||0)+(s.laborCost||0))*qtyOf(j,id);});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.cost||0;});return t;}
 function priceOf(j,id){const ov=j.servicePrices&&j.servicePrices[id];const s=SERVICES.find(x=>x.id===id);return ov!=null?ov:(s?s.price||0:0);}
 function jobCharge(j){let t=j.surchargeAmt||0;(j.services||[]).forEach(id=>{t+=priceOf(j,id)*qtyOf(j,id);});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.price||0;});return t;}
 function svcName(id){const s=SERVICES.find(x=>x.id===id)||PRODUCTS.find(x=>x.id===id);return s?s.name:id;}
@@ -393,6 +395,12 @@ async function loadData(baseUrl = API_BASE + '/api') {
         SETTINGS={...SETTINGS,...s};
       }
     }catch(e){console.error('settings load error',e);}
+    try{
+      if(typeof isOwner==='function'&&isOwner()){
+        const usersRes=await apiFetch(baseUrl+'/users');
+        if(usersRes.ok){CRM_USERS=await usersRes.json();}
+      }
+    }catch(e){console.error('users load error',e);}
     updateBrandUI();
 
     Object.keys(LOCATIONS).forEach(loc=>{
@@ -400,8 +408,10 @@ async function loadData(baseUrl = API_BASE + '/api') {
       const locJobs=rowsForLoc(allJobs,loc).map(r=>ensureLoc(r,loc));
       const locReminders=rowsForLoc(allReminders,loc).map(r=>ensureLoc(r,loc));
       const locTasks=rowsForLoc(allTasks,loc).map(r=>ensureLoc(r,loc));
-      const locServices=rowsForLoc(allServices,loc).map(r=>ensureLoc(r,loc));
-      const locProducts=rowsForLoc(allProducts,loc).map(r=>ensureLoc(r,loc));
+      const _svcOrder=SETTINGS.serviceOrder||(()=>{try{return JSON.parse(localStorage.getItem('crm_serviceOrder')||'null');}catch(e){return null;}})();
+      const _prdOrder=SETTINGS.productOrder||(()=>{try{return JSON.parse(localStorage.getItem('crm_productOrder')||'null');}catch(e){return null;}})();
+      const locServices=sortByOrder(rowsForLoc(allServices,loc).map(r=>ensureLoc(r,loc)),_svcOrder);
+      const locProducts=sortByOrder(rowsForLoc(allProducts,loc).map(r=>ensureLoc(r,loc)),_prdOrder);
       STORE[loc]={
         customers:locCustomers,
         jobs:locJobs,
