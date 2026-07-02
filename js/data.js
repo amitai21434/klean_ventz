@@ -242,13 +242,17 @@ function downloadCsv(filename,rows){
 /* ---- dashboard task computation ---- */
 function getDashboardTasks(){
   const today=dOff(0);const out=[];
-  reminders.forEach(r=>{if(r.dueDate>today)return;const c=customers.find(x=>x.id===r.customerId);if(!c||hasScheduledJob(c.id))return;out.push({kind:'followup',customer:c,date:r.dueDate,reason:r.reason,reminderId:r.id});});
+  // callback reminders: show even if customer has a scheduled job
+  reminders.forEach(r=>{if(r.dueDate>today)return;const c=customers.find(x=>x.id===r.customerId);if(!c)return;out.push({kind:'followup',customer:c,date:r.dueDate,reason:r.reason,reminderId:r.id});});
+  // service-due: skip if already scheduled
   customers.forEach(c=>{if(!c.nextDue)return;if(addDays(c.nextDue,-7)>today)return;if(hasScheduledJob(c.id))return;if(c.snoozeUntil&&c.snoozeUntil>today)return;if(hasReminder(c.id))return;out.push({kind:'service',customer:c,date:c.nextDue,reason:'Service due'});});
   return out.sort((a,b)=>a.date>b.date?1:-1);
 }
 function getUpcoming(){
   const today=dOff(0),horizon=addDays(today,30);const out=[];
-  reminders.forEach(r=>{if(r.dueDate<=today||r.dueDate>horizon)return;const c=customers.find(x=>x.id===r.customerId);if(!c||hasScheduledJob(c.id))return;out.push({kind:'followup',customer:c,date:r.dueDate,reason:r.reason});});
+  // callback reminders: show within 30 days even if customer has a scheduled job
+  reminders.forEach(r=>{if(!r.dueDate||r.dueDate<=today||r.dueDate>horizon)return;const c=customers.find(x=>x.id===r.customerId);if(!c)return;out.push({kind:'followup',customer:c,date:r.dueDate,reason:r.reason});});
+  // service-due: skip if already scheduled or has a reminder
   customers.forEach(c=>{if(!c.nextDue)return;const trig=addDays(c.nextDue,-7);if(trig<=today||trig>horizon)return;if(hasScheduledJob(c.id))return;if(hasReminder(c.id))return;out.push({kind:'service',customer:c,date:c.nextDue,reason:'Service due'});});
   return out.sort((a,b)=>a.date>b.date?1:-1);
 }

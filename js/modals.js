@@ -472,7 +472,12 @@ function openScheduleJob(prefillId){
   SJ_CAL_MODE='week';
   SJ_CAL_DATE=dOff(1);
   const preServ=pre?pre.serviceRequested||[]:[];
-  showModal(`<div class="sj-form-pane">
+  showModal(`<div class="sj-mob-tabs">
+    <button class="sj-tab on" id="sj-tab-form" onclick="sjTab('form')"><i class="ti ti-calendar-plus"></i> Book</button>
+    <button class="sj-tab" id="sj-tab-cal" onclick="sjTab('cal')"><i class="ti ti-calendar"></i> Schedule</button>
+    <button class="close-x sj-tab-close" onclick="closeModal()"><i class="ti ti-x"></i></button>
+  </div>
+  <div class="sj-form-pane">
     ${headX('Schedule job',pre?'For '+nameOf(pre):'Book a new appointment')}
     <div class="sheet-body">
       <div class="field">
@@ -596,6 +601,25 @@ function sjShowJobPop(id,evt){
   },0);
 }
 function closeSjJobPop(){const p=document.getElementById('sj-job-pop');if(p)p.remove();}
+function sjTab(tab){
+  const fp=document.querySelector('.sj-form-pane');
+  const cp=document.querySelector('.sj-cal-pane');
+  const ft=document.getElementById('sj-tab-form');
+  const ct=document.getElementById('sj-tab-cal');
+  if(!fp||!cp)return;
+  if(tab==='cal'){
+    fp.classList.add('sj-mob-hidden');
+    cp.classList.add('sj-mob-active');
+    if(ft)ft.classList.remove('on');
+    if(ct)ct.classList.add('on');
+    renderSjCalPanel();
+  }else{
+    fp.classList.remove('sj-mob-hidden');
+    cp.classList.remove('sj-mob-active');
+    if(ft)ft.classList.add('on');
+    if(ct)ct.classList.remove('on');
+  }
+}
 function saveJob(btn){
   (async function(){
     const custId=SJ_CUST.id;

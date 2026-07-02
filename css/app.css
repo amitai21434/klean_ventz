@@ -747,6 +747,16 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
 }
 .sj-job-pop-x i{font-size:14px}
 .sj-job-pop-x:hover{background:var(--line-2)}
+.sj-mob-tabs{display:none}
+.sj-tab{
+  flex:1;padding:12px 8px;border:none;background:transparent;
+  font-size:13px;font-weight:600;color:var(--ink-500);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  border-bottom:2px solid transparent;transition:.12s;
+}
+.sj-tab i{font-size:16px}
+.sj-tab.on{color:var(--ink-900);border-bottom-color:var(--ink-900)}
+.sj-tab-close{margin:6px;flex-shrink:0;align-self:center}
 
 /* ============================================================ RESPONSIVE */
 .only-mobile{display:none}
@@ -803,8 +813,11 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
   .scrim{padding:0;align-items:flex-end}
   .sheet,.sheet.wide,.sheet.dual{width:100%;max-width:100%;max-height:94vh;border-radius:20px 20px 0 0}
   .sheet.dual{flex-direction:column;overflow:hidden}
+  .sj-mob-tabs{display:flex;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--line)}
   .sj-cal-pane{display:none}
+  .sj-cal-pane.sj-mob-active{display:flex;flex:1;overflow-y:auto;flex-direction:column;padding:12px 14px}
   .sj-form-pane{width:100%;flex:1;border-right:none;overflow-y:auto}
+  .sj-form-pane.sj-mob-hidden{display:none}
   @keyframes sheet-in{from{opacity:.4;transform:translateY(40px)}to{opacity:1;transform:none}}
   .sheet-foot{flex-wrap:wrap}
   .sheet-foot .btn{flex:1}
