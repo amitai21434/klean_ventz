@@ -711,6 +711,43 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
   .tr-x{font-size:8px}
 }
 
+/* ============================================================ BOOKING DUAL MODAL */
+.sheet.dual{
+  max-width:1100px;width:95vw;max-height:90vh;
+  display:flex;flex-direction:row;overflow:hidden;
+}
+.sj-form-pane{
+  width:420px;flex-shrink:0;
+  display:flex;flex-direction:column;overflow-y:auto;
+  border-right:1px solid var(--line);
+}
+.sj-cal-pane{
+  flex:1;min-width:0;overflow-y:auto;
+  padding:14px 16px;background:var(--paper);
+}
+.sj-cal-head{
+  position:sticky;top:0;z-index:3;
+  background:var(--paper);padding-bottom:10px;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;flex-wrap:wrap;
+}
+.sj-job-pop{
+  position:fixed;z-index:500;
+  background:var(--surface);border:1px solid var(--line-2);
+  border-radius:var(--r-card);padding:14px 16px;
+  box-shadow:var(--sh-pop);min-width:220px;max-width:280px;
+  animation:sheet-in .15s ease;
+}
+.sj-job-pop-x{
+  position:absolute;top:8px;right:8px;
+  width:24px;height:24px;
+  border:none;background:var(--surface-3);border-radius:6px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-500);padding:0;
+}
+.sj-job-pop-x i{font-size:14px}
+.sj-job-pop-x:hover{background:var(--line-2)}
+
 /* ============================================================ RESPONSIVE */
 .only-mobile{display:none}
 
@@ -764,7 +801,10 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
 
   /* bottom-sheet modals */
   .scrim{padding:0;align-items:flex-end}
-  .sheet,.sheet.wide{width:100%;max-width:100%;max-height:94vh;border-radius:20px 20px 0 0}
+  .sheet,.sheet.wide,.sheet.dual{width:100%;max-width:100%;max-height:94vh;border-radius:20px 20px 0 0}
+  .sheet.dual{flex-direction:column;overflow:hidden}
+  .sj-cal-pane{display:none}
+  .sj-form-pane{width:100%;flex:1;border-right:none;overflow-y:auto}
   @keyframes sheet-in{from{opacity:.4;transform:translateY(40px)}to{opacity:1;transform:none}}
   .sheet-foot{flex-wrap:wrap}
   .sheet-foot .btn{flex:1}

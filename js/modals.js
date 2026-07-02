@@ -1,8 +1,8 @@
 /* ============================================================
    MODALS — flows + infra
    ============================================================ */
-function showModal(html,wide){document.getElementById('modal').innerHTML=`<div class="scrim" onclick="bgClose(event)"><div class="sheet${wide?' wide':''}">${html}</div></div>`;document.body.style.overflow='hidden';}
-function closeModal(){document.getElementById('modal').innerHTML='';document.body.style.overflow='';}
+function showModal(html,cls){document.getElementById('modal').innerHTML=`<div class="scrim" onclick="bgClose(event)"><div class="sheet${cls?' '+cls:''}">${html}</div></div>`;document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal').innerHTML='';document.body.style.overflow='';closeSjJobPop();}
 function bgClose(e){if(e.target.classList.contains('scrim'))closeModal();}
 function toast(msg){const el=document.getElementById('toast');el.innerHTML='<i class="ti ti-check"></i>'+msg;el.classList.add('show');clearTimeout(window.__t);window.__t=setTimeout(()=>el.classList.remove('show'),3400);}
 function headX(title,sub){return `<div class="sheet-head"><div><div class="sheet-title">${title}</div>${sub?`<div class="sheet-sub">${sub}</div>`:''}</div><button class="close-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>`;}
@@ -469,33 +469,133 @@ function openScheduleJob(prefillId){
   const pre=prefillId?customers.find(c=>c.id===prefillId):null;
   SJ_CUST={id:prefillId||null,q:pre?nameOf(pre):'',open:false};
   SJ_DURATION=2;
+  SJ_CAL_MODE='week';
+  SJ_CAL_DATE=dOff(1);
   const preServ=pre?pre.serviceRequested||[]:[];
-  showModal(`${headX('Schedule job',pre?'For '+nameOf(pre):'Book a new appointment')}
-  <div class="sheet-body">
-    <div class="field">
-      <label>Customer</label>
-      <div class="ms" id="sj-custpick">
-        <div class="ms-control"><input type="text" id="sj-cust-search" class="ms-input" style="width:100%" placeholder="Search by name or phone\u2026" autocomplete="off" value="${pre?tAttr(nameOf(pre)):''}" oninput="sjCustType(this.value)" onfocus="sjCustOpen()" onblur="sjCustBlur()"></div>
-        <div id="sj-cust-drop"></div>
+  showModal(`<div class="sj-form-pane">
+    ${headX('Schedule job',pre?'For '+nameOf(pre):'Book a new appointment')}
+    <div class="sheet-body">
+      <div class="field">
+        <label>Customer</label>
+        <div class="ms" id="sj-custpick">
+          <div class="ms-control"><input type="text" id="sj-cust-search" class="ms-input" style="width:100%" placeholder="Search by name or phone\u2026" autocomplete="off" value="${pre?tAttr(nameOf(pre)):''}" oninput="sjCustType(this.value)" onfocus="sjCustOpen()" onblur="sjCustBlur()"></div>
+          <div id="sj-cust-drop"></div>
+        </div>
+        <div id="sj-cust-info"></div>
+        <div style="margin-top:6px"><span class="hint">Not on the books? <span style="color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline" onclick="closeModal();openNewCustomer()">Add a new customer \u2197</span></span></div>
       </div>
-      <div id="sj-cust-info"></div>
-      <div style="margin-top:6px"><span class="hint">Not on the books? <span style="color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline" onclick="closeModal();openNewCustomer()">Add a new customer \u2197</span></span></div>
+      <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}" oninput="sjSyncCalDate(this.value)"></div><div class="field" style="margin:0"><label>Start time</label><input type="time" id="sj-time" value="10:00" oninput="sjUpdateRange()"></div></div>
+      <div class="field"><label>Job length</label><div class="segmented" id="sj-duration">${durationButtons(2,'sjSetDuration')}</div><div class="hint cell-mono" id="sj-time-range" style="margin-top:6px"></div></div>
+      <div class="section-title">Services</div>
+      ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''}><label for="svc-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
+      <div class="surcharge-box"><input type="checkbox" id="sj-surcharge"><label>Above 2nd floor surcharge</label><input type="number" id="sj-surcharge-amt" placeholder="$0"></div>
+      <div class="section-title" style="margin-top:16px">Products</div>
+      ${PRODUCTS.map(p=>`<div class="check-row"><input type="checkbox" id="prd-${p.id}"><label for="prd-${p.id}">${p.name}</label><span class="price">${money(p.price)}</span></div>`).join('')}
+      <div class="section-title" style="margin-top:16px">Job notes</div>
+      <div class="field" style="margin:0"><textarea id="sj-notes" placeholder="Access notes, customer requests\u2026">${pre?pre.notes||'':''}</textarea></div>
     </div>
-    <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}"></div><div class="field" style="margin:0"><label>Start time</label><input type="time" id="sj-time" value="10:00" oninput="sjUpdateRange()"></div></div>
-    <div class="field"><label>Job length</label><div class="segmented" id="sj-duration">${durationButtons(2,'sjSetDuration')}</div><div class="hint cell-mono" id="sj-time-range" style="margin-top:6px"></div></div>
-    <div class="section-title">Services</div>
-    ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''}><label for="svc-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
-    <div class="surcharge-box"><input type="checkbox" id="sj-surcharge"><label>Above 2nd floor surcharge</label><input type="number" id="sj-surcharge-amt" placeholder="$0"></div>
-    <div class="section-title" style="margin-top:16px">Products</div>
-    ${PRODUCTS.map(p=>`<div class="check-row"><input type="checkbox" id="prd-${p.id}"><label for="prd-${p.id}">${p.name}</label><span class="price">${money(p.price)}</span></div>`).join('')}
-    <div class="section-title" style="margin-top:16px">Job notes</div>
-    <div class="field" style="margin:0"><textarea id="sj-notes" placeholder="Access notes, customer requests\u2026">${pre?pre.notes||'':''}</textarea></div>
+    <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob(this)"><i class="ti ti-calendar-plus"></i> Book job</button></div>
   </div>
-  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob(this)"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
+  <div class="sj-cal-pane">
+    <div id="sj-cal-panel"></div>
+  </div>`,'dual');
   renderSjCustInfo();
   sjUpdateRange();
+  renderSjCalPanel();
 }
 function openScheduleJobForCustomer(id){openScheduleJob(id);}
+
+/* ---------------------------------------------------------- EMBEDDED SCHEDULE (booking modal) */
+function sjSyncCalDate(v){if(v){SJ_CAL_DATE=v;renderSjCalPanel();}}
+function sjCalToggle(active){const m=[['month','Month'],['week','Week'],['day','Day']];return `<div class="segmented">${m.map(x=>`<button class="${active===x[0]?'on':''}" onclick="sjCalSetMode('${x[0]}')">${x[1]}</button>`).join('')}</div>`;}
+function sjCalSetMode(m){SJ_CAL_MODE=m;renderSjCalPanel();}
+function sjCalNavDay(d){SJ_CAL_DATE=addDays(SJ_CAL_DATE,d);renderSjCalPanel();}
+function sjCalNavWeek(d){SJ_CAL_DATE=addDays(SJ_CAL_DATE,7*d);renderSjCalPanel();}
+function sjCalNavMonth(d){const p=SJ_CAL_DATE.split('-');const dt=new Date(+p[0],+p[1]-1+d,1);SJ_CAL_DATE=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-01`;renderSjCalPanel();}
+function sjCalToday(){SJ_CAL_DATE=dOff(0);renderSjCalPanel();}
+function sjOpenCalDay(k){SJ_CAL_DATE=k;SJ_CAL_MODE='day';renderSjCalPanel();}
+function renderSjCalPanel(){const el=document.getElementById('sj-cal-panel');if(!el)return;el.innerHTML=SJ_CAL_MODE==='day'?renderSjDay():SJ_CAL_MODE==='week'?renderSjWeek():renderSjMonth();}
+
+function renderSjMonth(){
+  const p=SJ_CAL_DATE.split('-');const year=+p[0],month=+p[1]-1;const todayKey=dOff(0);
+  const monthName=['January','February','March','April','May','June','July','August','September','October','November','December'][month];
+  const firstDay=new Date(year,month,1).getDay();const daysInMonth=new Date(year,month+1,0).getDate();
+  const prefix=`${year}-${String(month+1).padStart(2,'0')}-`;
+  const jobDates={};jobs.forEach(j=>{if(j.date.startsWith(prefix)){const d=parseInt(j.date.slice(8,10));jobDates[d]=(jobDates[d]||0)+1;}});
+  let cells='';['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d=>{cells+='<div class="cal-head">'+d+'</div>';});
+  for(let i=0;i<firstDay;i++)cells+='<div class="cal-day blank"></div>';
+  for(let d=1;d<=daysInMonth;d++){const key=prefix+String(d).padStart(2,'0');const hasJob=jobDates[d];cells+=`<div class="cal-day${hasJob?' has-job':''}${key===todayKey?' today':''}" onclick="sjOpenCalDay('${key}')"><span class="daynum">${d}</span>${hasJob?`<span class="jobpill">${hasJob}</span>`:''}</div>`;}
+  return `<div class="sj-cal-head"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-sm btn-icon" onclick="sjCalNavMonth(-1)"><i class="ti ti-chevron-left"></i></button><h3 style="font-size:15px;font-weight:700;min-width:130px;text-align:center;letter-spacing:-.01em">${monthName} ${year}</h3><button class="btn btn-sm btn-icon" onclick="sjCalNavMonth(1)"><i class="ti ti-chevron-right"></i></button><button class="btn btn-sm" onclick="sjCalToday()">Today</button></div>${sjCalToggle('month')}</div><div class="cal-grid" style="margin-top:8px">${cells}</div><p class="hint" style="margin-top:10px;text-align:center">Tap any day to see its schedule.</p>`;
+}
+
+function renderSjWeek(){
+  const start=weekStartKey(SJ_CAL_DATE);
+  const days=[];for(let i=0;i<7;i++)days.push(addDays(start,i));
+  const H0=7,HH=48,GUT=44,COLW=118;
+  const dayEvs=days.map(k=>layoutDay(jobs.filter(j=>j.date===k)));
+  const maxEnd=dayEvs.reduce((m,evs)=>evs.reduce((mm,e)=>Math.max(mm,e.end),m),H0*60);
+  const H1=Math.max(20,Math.ceil(maxEnd/60));
+  const totalW=GUT+7*COLW;const totalH=(H1-H0)*HH+10;
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const todayKey=dOff(0);
+  let header=`<div style="display:flex;width:${totalW}px"><div style="width:${GUT}px;flex-shrink:0"></div>`+days.map((k,i)=>{const dp=k.split('-');const isT=k===todayKey;return `<div onclick="sjOpenCalDay('${k}')" style="width:${COLW}px;flex-shrink:0;text-align:center;cursor:pointer;padding:5px 0;border-radius:8px;${isT?'background:var(--ink-900);color:#fff':''}"><div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;${isT?'color:#fff':'color:var(--ink-400)'}">${dayNames[i]}</div><div class="cell-mono" style="font-size:13px;font-weight:600;margin-top:1px">${parseInt(dp[2])}</div></div>`;}).join('')+'</div>';
+  let grid='';
+  for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?'a':'p');grid+=`<div style="position:absolute;top:${top}px;left:0;width:${totalW}px;border-top:1px solid var(--line)"></div><div class="cell-mono" style="position:absolute;top:${top-6}px;left:0;width:${GUT-6}px;text-align:right;font-size:9px;color:var(--ink-400)">${label}</div>`;}
+  let seps='';for(let i=0;i<7;i++){const left=GUT+i*COLW;seps+=`<div style="position:absolute;top:0;bottom:0;left:${left}px;border-left:1px solid var(--line)"></div>`;}
+  let blocks='';
+  days.forEach((k,di)=>{const evs=dayEvs[di];evs.forEach(e=>{const j=e.job;const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(j.durationHours||2)*HH-3;const cw=COLW/e.cols;const left=GUT+di*COLW+e.col*cw+1;const w=cw-3;blocks+=`<div class="cal-event${j.status==='completed'?' done':''}" onclick="sjShowJobPop(${j.id},event)" style="top:${top}px;left:${left}px;width:${w}px;height:${height}px;padding:3px 5px"><div class="cal-event-time" style="color:${j.status==='completed'?'var(--green)':'var(--ink-900)'};font-size:9.5px">${fmtTime(j.time)}</div><div class="cal-event-name" style="font-size:10.5px">${j.customerName}</div></div>`;});});
+  return `<div class="sj-cal-head"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-sm btn-icon" onclick="sjCalNavWeek(-1)"><i class="ti ti-chevron-left"></i></button><h3 style="font-size:13px;font-weight:700;letter-spacing:-.01em">${fmtDate(start)} \u2013 ${fmtDate(addDays(start,6))}</h3><button class="btn btn-sm btn-icon" onclick="sjCalNavWeek(1)"><i class="ti ti-chevron-right"></i></button><button class="btn btn-sm" onclick="sjCalToday()">Today</button></div>${sjCalToggle('week')}</div><div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px"><div style="min-width:${totalW}px">${header}<div style="position:relative;height:${totalH}px;margin-top:4px">${grid}${seps}${blocks}</div></div></div>`;
+}
+
+function renderSjDay(){
+  const key=SJ_CAL_DATE;const dayJobs=jobs.filter(j=>j.date===key);
+  const H0=7,HH=60,GUT=58;
+  const evs=layoutDay(dayJobs);
+  const maxEnd=evs.reduce((m,e)=>Math.max(m,e.end),H0*60);
+  const H1=Math.max(20,Math.ceil(maxEnd/60));
+  let grid='';
+  for(let h=H0;h<=H1;h++){const top=(h-H0)*HH;const label=(h%12===0?12:h%12)+(h<12?' AM':' PM');grid+=`<div style="position:absolute;top:${top}px;left:0;right:0;height:0;border-top:1px solid var(--line)"></div><div class="cell-mono" style="position:absolute;top:${top-7}px;left:0;width:${GUT-10}px;text-align:right;font-size:10px;color:var(--ink-400)">${label}</div>`;}
+  let blocks='';
+  evs.forEach(e=>{const j=e.job;const top=Math.max(0,((e.start-H0*60)/60)*HH);const height=(j.durationHours||2)*HH-5;const leftCalc=`calc(${GUT}px + (100% - ${GUT}px) * ${e.col/e.cols})`;const widthCalc=`calc((100% - ${GUT}px) * ${1/e.cols} - 6px)`;blocks+=`<div class="cal-event${j.status==='completed'?' done':''}" onclick="sjShowJobPop(${j.id},event)" style="top:${top}px;left:${leftCalc};width:${widthCalc};height:${height}px"><div class="cal-event-time" style="color:${j.status==='completed'?'var(--green)':'var(--ink-900)'}">${fmtTime(j.time)}\u2013${fmtTime(minsToHHMM(e.end))} \u00b7 ${j.status}</div><div class="cal-event-name">${j.customerName}</div><div class="cal-event-meta">${j.services.map(svcName).join(', ')}</div></div>`;});
+  const totalH=(H1-H0)*HH+12;
+  const dp=key.split('-');const dObj=new Date(+dp[0],+dp[1]-1,+dp[2]);const dayName=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dObj.getDay()];
+  const isToday=key===dOff(0);
+  return `<div class="sj-cal-head"><div style="display:flex;align-items:center;gap:8px"><button class="btn btn-sm btn-icon" onclick="sjCalNavDay(-1)"><i class="ti ti-chevron-left"></i></button><div><h3 style="font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap">${dayName}${isToday?' \u00b7 Today':''}</h3><div class="cell-mono" style="font-size:11px;color:var(--ink-500)">${fmtDate(key)}</div></div><button class="btn btn-sm btn-icon" onclick="sjCalNavDay(1)"><i class="ti ti-chevron-right"></i></button><button class="btn btn-sm" onclick="sjCalToday()">Today</button></div>${sjCalToggle('day')}</div><div class="hint" style="margin:8px 0 10px">${dayJobs.length} job${dayJobs.length!==1?'s':''} \u00b7 tap a block to peek</div><div style="position:relative;height:${totalH}px">${grid}${blocks}</div>`;
+}
+
+function sjShowJobPop(id,evt){
+  evt.stopPropagation();
+  const existing=document.getElementById('sj-job-pop');
+  if(existing){const wasId=existing.dataset.jobId;existing.remove();if(String(wasId)===String(id))return;}
+  const j=jobs.find(x=>x.id===id);if(!j)return;
+  const c=customers.find(x=>x.id===j.customerId)||{};
+  const [hh,mm]=(j.time||'00:00').split(':').map(Number);
+  const endMins=hh*60+mm+(j.durationHours||2)*60;
+  const pop=document.createElement('div');
+  pop.id='sj-job-pop';pop.dataset.jobId=id;pop.className='sj-job-pop';
+  pop.innerHTML=`<button class="sj-job-pop-x" onclick="closeSjJobPop()"><i class="ti ti-x"></i></button>
+    <div style="font-weight:700;font-size:14px;padding-right:22px;color:var(--ink-900)">${tEsc(j.customerName)}</div>
+    <div class="cell-sub cell-mono" style="margin-top:3px">${fmtDate(j.date)} \u00b7 ${fmtTime(j.time)}\u2013${fmtTime(minsToHHMM(endMins))}</div>
+    <div class="cell-sub" style="margin-top:3px">${j.services.map(svcName).join(', ')||'\u2014'}</div>
+    ${c.address?`<div class="cell-sub" style="margin-top:4px;display:flex;align-items:center;gap:4px"><i class="ti ti-map-pin" style="font-size:11px;color:var(--ink-400);flex-shrink:0"></i>${addressLink(c.address)}</div>`:''}
+    <div style="margin-top:8px"><span class="badge ${statusBadge(j.status)}">${j.status}</span></div>`;
+  document.body.appendChild(pop);
+  const el=evt.target.closest('.cal-event')||evt.target;
+  const rect=el.getBoundingClientRect();
+  const popW=pop.offsetWidth||240;
+  const popH=pop.offsetHeight||130;
+  let left=rect.right+8;
+  if(left+popW>window.innerWidth-8)left=rect.left-popW-8;
+  if(left<8)left=8;
+  let top=rect.top;
+  if(top+popH>window.innerHeight-8)top=window.innerHeight-popH-8;
+  if(top<8)top=8;
+  pop.style.left=left+'px';pop.style.top=top+'px';
+  setTimeout(()=>{
+    function outside(e){const p=document.getElementById('sj-job-pop');if(p&&!p.contains(e.target)){p.remove();document.removeEventListener('click',outside);}}
+    document.addEventListener('click',outside);
+  },0);
+}
+function closeSjJobPop(){const p=document.getElementById('sj-job-pop');if(p)p.remove();}
 function saveJob(btn){
   (async function(){
     const custId=SJ_CUST.id;

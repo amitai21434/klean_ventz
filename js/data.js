@@ -157,6 +157,8 @@ let reminders = [];
 let nextCustId=1,nextJobId=1,nextReminderId=1,nextTaskId=1,selectedPayment='';
 let SJ_CUST={id:null,q:'',open:false};
 let SJ_DURATION=2;
+let SJ_CAL_MODE='week';
+let SJ_CAL_DATE='';
 let CS_DURATION=2;
 let CS_TIME='';
 let tasks = [];
