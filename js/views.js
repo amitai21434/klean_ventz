@@ -278,7 +278,7 @@ function catalogRow(type,it){
       <input class=”cat-num” type=”number” value=”${it.laborCost||0}” onchange=”updateCatalog('${type}','${it.id}','laborCost',parseFloat(this.value)||0)”>
       <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
       <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
-      <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove \\”${nm}\\” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
+      <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove ${nm} from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
     </div>`;
   }
   const margin=(it.price||0)-(it.cost||0);
@@ -288,7 +288,7 @@ function catalogRow(type,it){
     <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
     <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
     <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
-    <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove \\”${nm}\\” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
+    <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove ${nm} from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
   </div>`;
 }
 function catDragStart(evt,type,id){_catDragType=type;_catDragId=id;evt.currentTarget.classList.add('dragging');}
@@ -386,11 +386,24 @@ function renderSettings(){
         <div class="callout callout-green" style="margin-bottom:8px"><i class="ti ti-file-invoice"></i><div><strong>Receipt or invoice</strong><div style="color:var(--ink-500);margin-top:1px">Sent when a job is completed</div></div></div>
         <div class="callout callout-green"><i class="ti ti-star"></i><div><strong>Review request</strong><div style="color:var(--ink-500);margin-top:1px">Sent with the receipt after payment</div></div></div>
       </div>
-      <div class="card">
+      <div class=”card”>
         <div class=”section-title”><i class=”ti ti-message-2-code”></i> Email templates</div>
-        <p class=”hint” style=”margin-bottom:10px”>Customize the body text of automated emails. Available variables:</p>
-        <div class=”callout” style=”margin-bottom:12px;font-family:var(--font-mono);font-size:11.5px;line-height:1.8;color:var(--ink-700)”>{{customerName}} &middot; {{businessName}} &middot; {{date}} &middot; {{time}} &middot; {{services}} &middot; {{total}} &middot; {{reviewLink}}</div>
+        <p class=”hint” style=”margin-bottom:12px”>Write the body text for each automated email. Use <strong>{{double curly braces}}</strong> around any variable name and it will be replaced with the real value when sent.</p>
+        <div style=”margin-bottom:16px”>
+          <div class=”section-title” style=”font-size:11px;margin-bottom:8px”>Available variables</div>
+          <div style=”display:grid;gap:5px;font-size:12.5px”>
+            <div style=”display:grid;grid-template-columns:150px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)”><span style=”font-family:var(--font-mono);color:var(--ink-700)”>{{customerName}}</span><span style=”color:var(--ink-500)”>The customer's full name (e.g. <em>John Smith</em>)</span></div>
+            <div style=”display:grid;grid-template-columns:150px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)”><span style=”font-family:var(--font-mono);color:var(--ink-700)”>{{businessName}}</span><span style=”color:var(--ink-500)”>Your business name from Settings (e.g. <em>Klean Ventz</em>)</span></div>
+            <div style=”display:grid;grid-template-columns:150px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)”><span style=”font-family:var(--font-mono);color:var(--ink-700)”>{{date}}</span><span style=”color:var(--ink-500)”>The job date (e.g. <em>Mon Jan 6, 2025</em>)</span></div>
+            <div style=”display:grid;grid-template-columns:150px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)”><span style=”font-family:var(--font-mono);color:var(--ink-700)”>{{time}}</span><span style=”color:var(--ink-500)”>The job start time (e.g. <em>10:00 AM</em>)</span></div>
+            <div style=”display:grid;grid-template-columns:150px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)”><span style=”font-family:var(--font-mono);color:var(--ink-700)”>{{services}}</span><span style=”color:var(--ink-500)”>Comma-separated list of booked services (e.g. <em>Dryer vent cleaning, Bird/nest removal</em>)</span></div>
+            <div style=”display:grid;grid-template-columns:150px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)”><span style=”font-family:var(--font-mono);color:var(--ink-700)”>{{total}}</span><span style=”color:var(--ink-500)”>The job total in dollars (e.g. <em>$185</em>) — only available in the receipt email</span></div>
+            <div style=”display:grid;grid-template-columns:150px 1fr;gap:8px;padding:6px 0”><span style=”font-family:var(--font-mono);color:var(--ink-700)”>{{reviewLink}}</span><span style=”color:var(--ink-500)”>Your Google review URL from Settings — pastes in as a clickable link</span></div>
+          </div>
+        </div>
+        <div class=”callout callout-green” style=”margin-bottom:10px”><i class=”ti ti-calendar-check”></i><div><strong>Confirmation email</strong> — sent when a job is booked<br><span style=”color:var(--ink-500);font-size:12px”>No attachment. Variables you can use: all except {{total}}.</span></div></div>
         <div class=”field”><label>Confirmation email body</label><textarea id=”set-tpl-confirm” rows=”5” style=”font-size:13px”>${tEsc(SETTINGS.emailTplConfirm||'Hi {{customerName}}, your {{businessName}} appointment is confirmed for {{date}} at {{time}}.\n\nServices: {{services}}\n\nIf you need to make a change, just reply to this email or give us a call.')}</textarea></div>
+        <div class=”callout callout-green” style=”margin-bottom:10px;margin-top:16px”><i class=”ti ti-file-invoice”></i><div><strong>Receipt / invoice email</strong> — sent when a job is completed<br><span style=”color:var(--ink-500);font-size:12px”>PDF receipt or invoice attached automatically. All variables available.</span></div></div>
         <div class=”field”><label>Receipt / invoice email body</label><textarea id=”set-tpl-receipt” rows=”5” style=”font-size:13px”>${tEsc(SETTINGS.emailTplReceipt||'Hi {{customerName}}, your {{businessName}} job on {{date}} is complete. Your receipt is attached.\n\nIf you were happy with the service, we\'d really appreciate a quick Google review:\n{{reviewLink}}')}</textarea></div>
         <button class=”btn btn-primary” onclick=”saveEmailTemplates(this)”><i class=”ti ti-check”></i> Save templates</button>
       </div>
