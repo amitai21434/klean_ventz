@@ -154,7 +154,8 @@ function addDays(ds,n){const d=new Date(ds);d.setDate(d.getDate()+n);return d.to
 let customers = [];
 let jobs = [];
 let reminders = [];
-let nextCustId=1,nextJobId=1,nextReminderId=1,nextTaskId=1,selectedPayment='';
+let nextCustId=1,nextJobId=1,nextReminderId=1,nextTaskId=1;
+let paymentSet=new Set();
 let SJ_CUST={id:null,q:'',open:false};
 let SJ_DURATION=2;
 let SJ_CAL_MODE='week';

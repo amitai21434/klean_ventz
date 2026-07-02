@@ -725,7 +725,7 @@ function saveJob(btn){
 function openJob(id){const j=jobs.find(x=>x.id===id);if(!j)return;if(j.status==='completed'){openCompletedJob(j);return;}openCompleteJob(id);}
 
 function openCompleteJob(id){
-  const j=jobs.find(x=>x.id===id);if(!j)return;selectedPayment=j.payment||'';
+  const j=jobs.find(x=>x.id===id);if(!j)return;paymentSet=new Set();
   CS_DURATION=j.durationHours||2;
   CS_TIME=j.time;
   const cc=customers.find(x=>x.id===j.customerId)||{};
@@ -742,8 +742,8 @@ function openCompleteJob(id){
     <div class="field-row" style="margin-bottom:10px"><div class="field" style="margin:0"><label>Charge total</label><input type="number" id="cs-total" value="${jobCharge(j)}" oninput="updateNet()"></div><div class="field" style="margin:0"><label>Discount <span class="optional-tag">optional</span></label><input type="number" id="cs-discount" value="${j.discount||''}" placeholder="0" oninput="updateNet()"></div></div>
     <div class="field"><label>Discount reason <span class="optional-tag">optional</span></label><input type="text" id="cs-discount-reason" value="${j.discountReason||''}" placeholder="e.g. repeat customer"></div>
     <div class="callout callout-ink" style="margin-bottom:14px;justify-content:space-between;align-items:center"><span style="font-weight:600;color:var(--ink-900)">Net collected</span><span class="mono" id="cs-net" style="font-size:18px;font-weight:700;color:var(--ink-900)">${money2(jobCharge(j))}</span></div>
-    <label style="display:block;margin-bottom:7px">Payment method</label>
-    <div class="pay-opts">${PAYMENT_METHODS.map(m=>`<div class="pay-opt" id="pay-${m}" onclick="selectPay('${m}')">${m}</div>`).join('')}</div>
+    <label style="display:block;margin-bottom:7px">Payment method <span class="optional-tag">pick one or more — enter amount if split</span></label>
+    <div class="pay-opts">${PAYMENT_METHODS.map(m=>`<div class="pay-opt-wrap"><div class="pay-opt" id="pay-${m}" onclick="togglePay('${m}')">${m}</div><input type="number" class="pay-amt" id="pamt-${m}" placeholder="$" style="display:none" oninput="syncPayLabel()"></div>`).join('')}</div>
     <div class="section-title" style="margin-top:18px">Job record</div>
     ${cc.notes?`<div class="callout callout-ink" style="margin-bottom:10px"><i class="ti ti-user"></i><div><strong>Customer note:</strong> ${tEsc(cc.notes)}</div></div>`:''}
     ${j.notes?`<div class="callout callout-ink" style="margin-bottom:10px"><i class="ti ti-clipboard"></i><div><strong>Job note:</strong> ${tEsc(j.notes)}</div></div>`:''}
@@ -751,7 +751,8 @@ function openCompleteJob(id){
     <div class="field"><label>Photos <span class="optional-tag">before / after</span></label>${j.photos&&j.photos.length?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${j.photos.map(url=>`<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('')}</div>`:''}<input type="file" id="cs-photos" accept="image/*" multiple onchange="previewSelectedPhotos(this)"><div id="cs-photos-preview" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div></div>
     <div class="field" style="margin:0"><label>Next service due in</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${(j.nextServiceMonths||12)===m?'selected':''}>${m} months</option>`).join('')}</select></div>
   </div>
-  <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteJob(${id},false)"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="openRescheduleJob(${id})"><i class="ti ti-calendar-repeat"></i> Reschedule</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn" onclick="completeJob(${id},this,true)"><i class="ti ti-check"></i> Complete only</button><button class="btn btn-success" id="cs-complete-btn" onclick="completeJob(${id},this,false)"><i class="ti ti-check"></i> Complete &amp; send ${j.payment==='Invoice'?'invoice':'receipt'}</button></div>`);
+  <div class="sheet-foot" style="flex-wrap:wrap;row-gap:8px"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteJob(${id},false)"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="openRescheduleJob(${id})"><i class="ti ti-calendar-repeat"></i> Reschedule</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn" onclick="completeJob(${id},this,true)"><i class="ti ti-check"></i> Complete only</button><button class="btn btn-success" id="cs-complete-btn" onclick="completeJob(${id},this,false)"><i class="ti ti-check"></i> Complete &amp; send receipt</button></div>`,'wide');
+  setTimeout(()=>initPayments(j.payment||''),0);
 }
 function recalcCompleteTotal(){
   let t=0;
@@ -760,7 +761,42 @@ function recalcCompleteTotal(){
   if(document.getElementById('cs-surcharge')?.checked)t+=parseFloat(document.getElementById('cs-surcharge-amt').value)||0;
   const el=document.getElementById('cs-total');if(el)el.value=t;updateNet();
 }
-function selectPay(m){selectedPayment=m;document.querySelectorAll('.pay-opt').forEach(el=>el.classList.remove('selected'));const el=document.getElementById('pay-'+m);if(el)el.classList.add('selected');const cb=document.getElementById('cs-complete-btn');if(cb)cb.innerHTML=`<i class="ti ti-check"></i> Complete &amp; send ${m==='Invoice'?'invoice':'receipt'}`;}
+function togglePay(m){
+  const opt=document.getElementById('pay-'+m);
+  const amt=document.getElementById('pamt-'+m);
+  if(paymentSet.has(m)){
+    paymentSet.delete(m);opt&&opt.classList.remove('selected');if(amt){amt.style.display='none';amt.value='';}
+  }else{
+    paymentSet.add(m);opt&&opt.classList.add('selected');if(amt){amt.style.display='';amt.focus();}
+  }
+  syncPayLabel();
+}
+function syncPayLabel(){
+  const hasInv=[...paymentSet].includes('Invoice');
+  const cb=document.getElementById('cs-complete-btn');
+  if(cb)cb.innerHTML=`<i class="ti ti-check"></i> Complete &amp; send ${hasInv?'invoice':'receipt'}`;
+}
+function getPaymentString(){
+  const parts=[...paymentSet].map(m=>{
+    const a=parseFloat(document.getElementById('pamt-'+m)?.value)||0;
+    return a>0?`${m} $${a}`:m;
+  });
+  return parts.join(' · ');
+}
+function initPayments(str){
+  paymentSet=new Set();
+  if(!str)return;
+  const parts=str.split(' · ');
+  parts.forEach(part=>{
+    const m=PAYMENT_METHODS.find(x=>part.startsWith(x));
+    if(!m)return;
+    paymentSet.add(m);
+    document.getElementById('pay-'+m)?.classList.add('selected');
+    const amtMatch=part.match(/\$([\d.]+)/);
+    if(amtMatch){const a=document.getElementById('pamt-'+m);if(a){a.style.display='';a.value=amtMatch[1];}}
+  });
+  syncPayLabel();
+}
 function updateNet(){const t=parseFloat(document.getElementById('cs-total').value)||0;const d=parseFloat(document.getElementById('cs-discount').value)||0;const el=document.getElementById('cs-net');if(el)el.textContent=money2(Math.max(0,t-d));}
 function hydrateJobModal(j){
   j.services=SERVICES.filter(s=>document.getElementById('cs-'+s.id)?.checked).map(s=>s.id);
@@ -770,7 +806,7 @@ function hydrateJobModal(j){
   j.discount=parseFloat(document.getElementById('cs-discount').value)||0;
   j.discountReason=document.getElementById('cs-discount-reason').value;
   j.total=Math.max(0,(parseFloat(document.getElementById('cs-total').value)||0)-j.discount);
-  j.payment=selectedPayment;
+  j.payment=getPaymentString();
   j.techNotes=document.getElementById('cs-notes').value;
   j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;
   j.durationHours=CS_DURATION;
@@ -900,7 +936,7 @@ async function completeJob(id,btn,skipEmail=false){
     await clearCustomerReminders(j.customerId);
     let emailSent=false;
     if(!skipEmail)emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
-    const isInv=selectedPayment==='Invoice';
+    const isInv=[...paymentSet].includes('Invoice');
     closeModal();
     toast(skipEmail?'Job completed — no email sent':(emailSent?(isInv?'Complete — invoice & review sent':'Complete — receipt & review sent'):'Complete — email not sent'));
     showView('jobs');showSuccessFlourish();
