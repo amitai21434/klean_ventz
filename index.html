@@ -8,6 +8,12 @@
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+<div id="app-loader">
+  <div class="app-loader-logo"><img src="assets/logo.jpg" alt="Klean Ventz"></div>
+  <div class="app-loader-brand">Klean Ventz</div>
+  <div class="app-loader-ring"></div>
+  <div class="app-loader-hint">Loading your workspace&hellip;</div>
+</div>
 <div id="conn-banner" class="conn-banner">
   <i class="ti ti-plug-connected-x"></i>
   <span>Can’t connect to the server. Check that the backend is running.</span>
@@ -95,6 +101,8 @@
     updateLocUI();
     applyRoleUI();
     showView('dashboard');
+    const ldr=document.getElementById('app-loader');
+    if(ldr){ldr.classList.add('fade-out');setTimeout(()=>ldr.style.display='none',380);}
   })();
 </script>
 </body>

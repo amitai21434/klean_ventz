@@ -53,7 +53,7 @@ function renderDashboard(){
   return `
   <div class="grid3" style="margin-bottom:14px">
     <div class="stat ${tasks.length?'accent-amber':''}"><div class="stat-label"><i class="ti ti-phone-call"></i> Customers to call</div><div class="stat-val">${tasks.length}</div><div class="stat-foot">${tasks.length?'Due for service or follow-up':'All caught up'}</div></div>
-    <div class="stat"><div class="stat-label"><i class="ti ti-calendar-event"></i> Scheduled jobs</div><div class="stat-val">${scheduled}</div><div class="stat-foot">On the books</div></div>
+    <div class="stat" style="cursor:pointer" onclick="showView('jobs')"><div class="stat-label"><i class="ti ti-calendar-event"></i> Scheduled jobs</div><div class="stat-val">${scheduled}</div><div class="stat-foot">On the books <i class="ti ti-arrow-right" style="font-size:11px;vertical-align:-1px"></i></div></div>
     <div class="stat"><div class="stat-label"><i class="ti ti-clock-hour-4"></i> Jobs today</div><div class="stat-val">${todayJobs.length}</div><div class="stat-foot">${fmtDate(today)}</div></div>
   </div>
   ${financialStats}
