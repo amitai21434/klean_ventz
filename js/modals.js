@@ -407,7 +407,7 @@ function openCustomer(id){
     <div class="field"><label>Lead source(s) <span class="optional-tag">how did they hear about us</span></label>${msMount('custls'+c.id,c.leadSources||[],c.id)}</div>
     <div class="field"><label>Notes</label><textarea onchange="updateCust(${c.id},'notes',this.value)">${c.notes}</textarea></div>
     <div class="section-title">Service history</div>
-    ${sortedJobs.length?sortedJobs.map((j,i)=>`<div class="history-item"><div class="history-rail"><div class="dot ${j.status==='completed'?'':'amber'}"></div>${i<sortedJobs.length-1?'<div class="history-line"></div>':''}</div><div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:600">${fmtDate(j.date)} \u2014 ${j.services.map(svcName).join(', ')}</div><div class="cell-sub" style="margin-top:1px">${j.status}${j.total?' \u00b7 '+money(j.total):''}${j.payment?' \u00b7 '+j.payment:''}${j.photos&&j.photos.length?' \u00b7 '+j.photos.length+' photo'+(j.photos.length>1?'s':''):''}</div>${j.techNotes?`<div class="cell-sub" style="margin-top:3px">${j.techNotes}</div>`:''}</div></div>`).join(''):'<p class="hint">No service history yet.</p>'}
+    ${sortedJobs.length?sortedJobs.map((j,i)=>`<div class="history-item"><div class="history-rail"><div class="dot ${j.status==='completed'?'':'amber'}"></div>${i<sortedJobs.length-1?'<div class="history-line"></div>':''}</div><div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:600">${fmtDate(j.date)} \u2014 ${j.services.map(id=>svcQtyName(id,j.serviceQtys)).join(', ')}</div><div class="cell-sub" style="margin-top:1px">${j.status}${j.total?' \u00b7 '+money(j.total):''}${j.payment?' \u00b7 '+j.payment:''}${j.photos&&j.photos.length?' \u00b7 '+j.photos.length+' photo'+(j.photos.length>1?'s':''):''}</div>${j.techNotes?`<div class="cell-sub" style="margin-top:3px">${j.techNotes}</div>`:''}</div></div>`).join(''):'<p class="hint">No service history yet.</p>'}
   </div>
   <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteCustomer(${id})"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openScheduleJobForCustomer(${id})"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
 }
@@ -547,7 +547,7 @@ function openScheduleJob(prefillId){
       <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}" oninput="sjSyncCalDate(this.value)"></div><div class="field" style="margin:0"><label>Start time</label><input type="time" id="sj-time" value="10:00" oninput="sjUpdateRange()"></div></div>
       <div class="field"><label>Job length</label><div class="segmented" id="sj-duration">${durationButtons(2,'sjSetDuration')}</div><div class="hint cell-mono" id="sj-time-range" style="margin-top:6px"></div></div>
       <div class="section-title">Services</div>
-      ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''}><label for="svc-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
+      ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''} onchange="sjQtySync('${s.id}')"><label for="svc-${s.id}">${s.name}</label><span class="svc-qty-ctl" id="sqc-${s.id}" style="display:${preServ.includes(s.id)?'inline-flex':'none'}"><button type="button" class="svc-qty-btn" onclick="sjQtyAdj('${s.id}',-1)">−</button><span class="svc-qty-val" id="sqv-${s.id}">1</span><button type="button" class="svc-qty-btn" onclick="sjQtyAdj('${s.id}',1)">+</button></span><input type="number" class="svc-price-override" id="spo-${s.id}" placeholder="${s.price}" title="Price (leave blank for catalog price)" style="display:${preServ.includes(s.id)?'inline-block':'none'}"><span class="price" id="spl-${s.id}" style="display:${preServ.includes(s.id)?'none':''}">${money(s.price)}</span></div>`).join('')}
       <div class="surcharge-box"><input type="checkbox" id="sj-surcharge"><label>Above 2nd floor surcharge</label><input type="number" id="sj-surcharge-amt" placeholder="$0"></div>
       <div class="section-title" style="margin-top:16px">Products</div>
       ${PRODUCTS.map(p=>`<div class="check-row"><input type="checkbox" id="prd-${p.id}"><label for="prd-${p.id}">${p.name}</label><span class="price">${money(p.price)}</span></div>`).join('')}
@@ -675,6 +675,10 @@ function sjTab(tab){
     if(ct)ct.classList.remove('on');
   }
 }
+function sjQtySync(id){const cb=document.getElementById('svc-'+id);const on=cb?.checked;const ctl=document.getElementById('sqc-'+id);if(ctl)ctl.style.display=on?'inline-flex':'none';const spo=document.getElementById('spo-'+id);if(spo)spo.style.display=on?'inline-block':'none';const spl=document.getElementById('spl-'+id);if(spl)spl.style.display=on?'none':'';if(!on){const v=document.getElementById('sqv-'+id);if(v)v.textContent='1';}}
+function sjQtyAdj(id,d){const el=document.getElementById('sqv-'+id);if(!el)return;el.textContent=Math.max(1,parseInt(el.textContent||'1')+d);}
+function sjGetQtys(){const q={};SERVICES.forEach(s=>{const cb=document.getElementById('svc-'+s.id);if(cb?.checked){const v=document.getElementById('sqv-'+s.id);q[s.id]=parseInt(v?.textContent||'1')||1;}});return q;}
+function sjGetPrices(){const p={};SERVICES.forEach(s=>{const cb=document.getElementById('svc-'+s.id);if(cb?.checked){const inp=document.getElementById('spo-'+s.id);const v=parseFloat(inp?.value);if(!isNaN(v))p[s.id]=v;}});return p;}
 function saveJob(btn){
   (async function(){
     const custId=SJ_CUST.id;
@@ -691,6 +695,8 @@ function saveJob(btn){
       durationHours: SJ_DURATION,
       status: 'scheduled',
       services: services,
+      serviceQtys: sjGetQtys(),
+      servicePrices: sjGetPrices(),
       products: products,
       surcharge: document.getElementById('sj-surcharge').checked,
       surchargeAmt: parseFloat(document.getElementById('sj-surcharge-amt').value)||0,
@@ -728,13 +734,14 @@ function openCompleteJob(id){
   const j=jobs.find(x=>x.id===id);if(!j)return;paymentSet=new Set();
   CS_DURATION=j.durationHours||2;
   CS_TIME=j.time;
+  CS_PRICES=j.servicePrices||{};
   const cc=customers.find(x=>x.id===j.customerId)||{};
   showModal(`${headX('Complete job',nameOf(cc))}
   <div class="sheet-body">
     <div class="callout callout-green" style="margin-bottom:14px"><i class="ti ti-calendar-check"></i><div><strong>${fmtDate(j.date)} \u00b7 <span id="cs-time-range">${timeRangeLabel(j.time,j.durationHours||2)}</span></strong><div style="color:var(--ink-500);margin-top:1px"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${addressLink(cc.address)}${cc.phone?' \u00b7 '+cc.phone:''}</div></div></div>
     <div class="field"><label>Job length <span class="optional-tag">set at booking</span></label><div class="callout callout-ink" style="padding:8px 12px;font-weight:600">${j.durationHours||2} hour${(j.durationHours||2)!==1?'s':''}</div></div>
     <div class="section-title">Services performed</div>
-    ${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${j.services.includes(s.id)?'checked':''} onchange="recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="price">${money(s.price)}</span></div>`).join('')}
+    ${SERVICES.map(s=>{const q=qtyOf(j,s.id);const chk=j.services.includes(s.id);return `<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${chk?'checked':''} onchange="csQtySync('${s.id}');recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="svc-qty-ctl" id="csqc-${s.id}" style="display:${chk?'inline-flex':'none'}"><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',-1)">−</button><span class="svc-qty-val" id="csqv-${s.id}">${chk?q:1}</span><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',1)">+</button></span><span class="price">${money(s.price)}/ea</span></div>`;}).join('')}
     <div class="surcharge-box"><input type="checkbox" id="cs-surcharge" ${j.surcharge?'checked':''} onchange="recalcCompleteTotal()"><label>Above 2nd floor surcharge</label><input type="number" id="cs-surcharge-amt" value="${j.surchargeAmt||''}" placeholder="$0" oninput="recalcCompleteTotal()"></div>
     <div class="section-title" style="margin-top:16px">Products sold</div>
     ${PRODUCTS.map(p=>`<div class="check-row"><input type="checkbox" id="cp-${p.id}" ${j.products.includes(p.id)?'checked':''} onchange="recalcCompleteTotal()"><label for="cp-${p.id}">${p.name}</label><span class="price">${money(p.price)}</span></div>`).join('')}
@@ -754,9 +761,12 @@ function openCompleteJob(id){
   <div class="sheet-foot" style="flex-wrap:wrap;row-gap:8px"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteJob(${id},false)"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn" onclick="openRescheduleJob(${id})"><i class="ti ti-calendar-repeat"></i> Reschedule</button><button class="btn" onclick="saveJobEdits(${id},this)"><i class="ti ti-device-floppy"></i> Save</button><button class="btn" onclick="completeJob(${id},this,true)"><i class="ti ti-check"></i> Complete only</button><button class="btn btn-success" id="cs-complete-btn" onclick="completeJob(${id},this,false)"><i class="ti ti-check"></i> Complete &amp; send receipt</button></div>`,'wide');
   setTimeout(()=>initPayments(j.payment||''),0);
 }
+function csQtySync(id){const cb=document.getElementById('cs-'+id);const ctl=document.getElementById('csqc-'+id);if(ctl)ctl.style.display=cb?.checked?'inline-flex':'none';if(cb&&!cb.checked){const v=document.getElementById('csqv-'+id);if(v)v.textContent='1';}}
+function csQtyAdj(id,d){const el=document.getElementById('csqv-'+id);if(!el)return;el.textContent=Math.max(1,parseInt(el.textContent||'1')+d);recalcCompleteTotal();}
+function csGetQtys(){const q={};SERVICES.forEach(s=>{const cb=document.getElementById('cs-'+s.id);if(cb?.checked){const v=document.getElementById('csqv-'+s.id);q[s.id]=parseInt(v?.textContent||'1')||1;}});return q;}
 function recalcCompleteTotal(){
   let t=0;
-  SERVICES.forEach(s=>{if(document.getElementById('cs-'+s.id)?.checked)t+=s.price||0;});
+  SERVICES.forEach(s=>{if(document.getElementById('cs-'+s.id)?.checked){const q=parseInt(document.getElementById('csqv-'+s.id)?.textContent||'1')||1;const p=CS_PRICES[s.id]!=null?CS_PRICES[s.id]:s.price||0;t+=p*q;}});
   PRODUCTS.forEach(p=>{if(document.getElementById('cp-'+p.id)?.checked)t+=p.price||0;});
   if(document.getElementById('cs-surcharge')?.checked)t+=parseFloat(document.getElementById('cs-surcharge-amt').value)||0;
   const el=document.getElementById('cs-total');if(el)el.value=t;updateNet();
@@ -800,6 +810,8 @@ function initPayments(str){
 function updateNet(){const t=parseFloat(document.getElementById('cs-total').value)||0;const d=parseFloat(document.getElementById('cs-discount').value)||0;const el=document.getElementById('cs-net');if(el)el.textContent=money2(Math.max(0,t-d));}
 function hydrateJobModal(j){
   j.services=SERVICES.filter(s=>document.getElementById('cs-'+s.id)?.checked).map(s=>s.id);
+  j.serviceQtys=csGetQtys();
+  j.servicePrices=j.servicePrices||{};
   j.products=PRODUCTS.filter(p=>document.getElementById('cp-'+p.id)?.checked).map(p=>p.id);
   j.surcharge=document.getElementById('cs-surcharge').checked;
   j.surchargeAmt=parseFloat(document.getElementById('cs-surcharge-amt').value)||0;
@@ -869,6 +881,7 @@ async function saveJobEdits(id,btn){
     await applyPendingPhotos(j);
     const payload={
       services:j.services,
+      serviceQtys:j.serviceQtys||{},
       products:j.products,
       surcharge:j.surcharge,
       surchargeAmt:j.surchargeAmt,
@@ -903,6 +916,7 @@ async function completeJob(id,btn,skipEmail=false){
     j.status='completed';
     const payload={
       services:j.services,
+      serviceQtys:j.serviceQtys||{},
       products:j.products,
       surcharge:j.surcharge,
       surchargeAmt:j.surchargeAmt,
@@ -983,7 +997,7 @@ function openCompletedJob(j){
     </div>
     <div class="callout callout-ink" style="margin-bottom:16px"><i class="ti ti-map-pin"></i><div>${addressLink(cc.address)}${cc.phone?' \u00b7 '+cc.phone:''}</div></div>
     <div style="display:grid;gap:10px;font-size:13.5px">
-      <div><span class="cell-sub">Services</span><div style="font-weight:600">${j.services.map(svcName).join(', ')||'\u2014'}</div></div>
+      <div><span class="cell-sub">Services</span><div style="font-weight:600">${j.services.map(id=>svcQtyName(id,j.serviceQtys)).join(', ')||'\u2014'}</div></div>
       ${j.products.length?`<div><span class="cell-sub">Products</span><div style="font-weight:600">${j.products.map(svcName).join(', ')}</div></div>`:''}
       ${j.discount?`<div><span class="cell-sub">Discount</span><div style="font-weight:600;color:var(--red)">-${money(j.discount)}${j.discountReason?' ('+j.discountReason+')':''}</div></div>`:''}
       <div><span class="cell-sub">Payment</span><div style="font-weight:600">${j.payment||'\u2014'}</div></div>

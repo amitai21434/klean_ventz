@@ -20,9 +20,12 @@ let SERVICES = [];
 let PRODUCTS = [];
 let LEAD_SOURCE_ROWS = [];
 
-function jobCost(j){let t=0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.cost||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.cost||0;});return t;}
-function jobCharge(j){let t=j.surchargeAmt||0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=s.price||0;});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.price||0;});return t;}
+function qtyOf(j,id){return (j.serviceQtys&&j.serviceQtys[id])||1;}
+function jobCost(j){let t=0;(j.services||[]).forEach(id=>{const s=SERVICES.find(x=>x.id===id);if(s)t+=(s.cost||0)*qtyOf(j,id);});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.cost||0;});return t;}
+function priceOf(j,id){const ov=j.servicePrices&&j.servicePrices[id];const s=SERVICES.find(x=>x.id===id);return ov!=null?ov:(s?s.price||0:0);}
+function jobCharge(j){let t=j.surchargeAmt||0;(j.services||[]).forEach(id=>{t+=priceOf(j,id)*qtyOf(j,id);});(j.products||[]).forEach(id=>{const p=PRODUCTS.find(x=>x.id===id);if(p)t+=p.price||0;});return t;}
 function svcName(id){const s=SERVICES.find(x=>x.id===id)||PRODUCTS.find(x=>x.id===id);return s?s.name:id;}
+function svcQtyName(id,qtys){const n=svcName(id);const q=(qtys&&qtys[id])||1;return q>1?`${q}× ${n}`:n;}
 function svcPrice(id){const s=SERVICES.find(x=>x.id===id)||PRODUCTS.find(x=>x.id===id);return s?s.price:0;}
 
 const PAYMENT_METHODS=['Cash','Check','Venmo','Zelle','CashApp','Invoice'];
@@ -162,6 +165,7 @@ let SJ_CAL_MODE='week';
 let SJ_CAL_DATE='';
 let CS_DURATION=2;
 let CS_TIME='';
+let CS_PRICES={};
 let tasks = [];
 let currentView='dashboard';
 let activeLoc='nj';
