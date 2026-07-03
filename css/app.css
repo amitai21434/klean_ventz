@@ -503,22 +503,14 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
 .inv-foot{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);text-align:center;font-size:12px;color:var(--ink-500)}
 
 /* ============================================================ CATALOG */
-.cat-head{
-  display:grid;grid-template-columns:1fr 92px 92px 78px 36px;gap:10px;align-items:center;
-  padding:0 4px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);
-}
-.cat-head.cat-head-svc{grid-template-columns:1fr 92px 92px 92px 78px 36px;}
-.cat-head span:nth-child(2),.cat-head span:nth-child(3),.cat-head span:nth-child(4){text-align:right}
-.cat-head.cat-head-svc span:nth-child(5){text-align:right}
-.cat-row{
-  display:grid;grid-template-columns:1fr 92px 92px 78px 36px;gap:10px;align-items:center;
-  padding:8px 4px;border-bottom:1px solid var(--line);cursor:default;
-}
-.cat-row.cat-row-svc{grid-template-columns:1fr 92px 92px 92px 78px 36px;}
-.cat-row:last-child{border-bottom:none}
+.cat-table{width:100%;border-collapse:collapse}
+.cat-table th{padding:0 8px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);text-align:left;white-space:nowrap}
+.cat-table th:nth-child(n+2){text-align:right}
+.cat-table td{padding:4px 8px;border-top:1px solid var(--line);vertical-align:middle}
+.cat-table td:nth-child(n+2){text-align:right;white-space:nowrap;width:1%}
 .cat-name{font-weight:600}
-.cat-num{text-align:right;font-family:var(--font-mono);font-size:12.5px}
-.cat-margin{text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600}
+.cat-num{text-align:right;font-family:var(--font-mono);font-size:12.5px;width:88px}
+.cat-margin{font-family:var(--font-mono);font-size:13px;font-weight:600}
 .cat-margin.pos{color:var(--green)}
 .cat-margin.neg{color:var(--red)}
 
@@ -547,19 +539,6 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
 .ms-create{color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline}
 .ls-manage{max-height:300px;overflow-y:auto;padding-right:4px}
 
-@media(max-width:600px){
-  .cat-head{display:none}
-  .cat-row{grid-template-columns:1fr 36px;grid-template-areas:"name del" "charge del" "cost del" "margin del";row-gap:6px;padding:12px 4px}
-  .cat-row.cat-row-svc{grid-template-areas:"name del" "charge del" "labor del" "cost del" "margin del"}
-  .cat-name{grid-area:name}
-  .cat-row>input:nth-child(2){grid-area:charge}
-  .cat-row:not(.cat-row-svc)>input:nth-child(3){grid-area:cost}
-  .cat-row-svc>input:nth-child(3){grid-area:labor}
-  .cat-row-svc>input:nth-child(4){grid-area:cost}
-  .cat-margin{grid-area:margin;text-align:left}
-  .cat-row>.btn{grid-area:del;align-self:start}
-  .cat-row input{text-align:left}
-}
 
 /* ============================================================ LEAD SOURCES */
 .ls-leg{display:grid;grid-template-columns:auto 1fr auto auto auto;align-items:center;gap:9px;padding:8px 9px;border-radius:var(--r-sm);cursor:pointer;transition:background .12s;border:1px solid transparent}
