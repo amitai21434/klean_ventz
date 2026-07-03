@@ -507,15 +507,12 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
   display:grid;grid-template-columns:1fr 92px 92px 78px 36px;gap:10px;align-items:center;
   padding:0 4px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);
 }
-.cat-head.cat-head-svc{grid-template-columns:1fr 92px 92px 92px 78px 36px;}
-.cat-head span:nth-child(n+2){text-align:right}
+.cat-head span:nth-child(2),.cat-head span:nth-child(3),.cat-head span:nth-child(4){text-align:right}
 .cat-row{
   display:grid;grid-template-columns:1fr 92px 92px 78px 36px;gap:10px;align-items:center;
-  padding:4px;border-bottom:1px solid var(--line);
+  padding:8px 4px;border-bottom:1px solid var(--line);
 }
-.cat-row.cat-row-svc{grid-template-columns:1fr 92px 92px 92px 78px 36px;}
 .cat-row:last-child{border-bottom:none}
-.cat-row input{min-width:0;padding:5px 8px;border-radius:6px}
 .cat-name{font-weight:600}
 .cat-num{text-align:right;font-family:var(--font-mono);font-size:12.5px}
 .cat-margin{text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600}
@@ -547,6 +544,16 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
 .ms-create{color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline}
 .ls-manage{max-height:300px;overflow-y:auto;padding-right:4px}
 
+@media(max-width:920px){
+  .cat-head{display:none}
+  .cat-row{grid-template-columns:1fr 36px;grid-template-areas:"name del" "charge del" "cost del" "margin del";row-gap:6px;padding:12px 4px}
+  .cat-name{grid-area:name}
+  .cat-row .cat-num:nth-of-type(1){grid-area:charge}
+  .cat-row .cat-num:nth-of-type(2){grid-area:cost}
+  .cat-margin{grid-area:margin;text-align:left}
+  .cat-row>.btn{grid-area:del;align-self:start}
+  .cat-row .cat-num{text-align:left}
+}
 
 /* ============================================================ LEAD SOURCES */
 .ls-leg{display:grid;grid-template-columns:auto 1fr auto auto auto;align-items:center;gap:9px;padding:8px 9px;border-radius:var(--r-sm);cursor:pointer;transition:background .12s;border:1px solid transparent}
