@@ -556,10 +556,10 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
   .cat-row.cat-row-svc{grid-template-columns:20px 1fr 36px;grid-template-areas:"drag name del" "drag charge del" "drag labor del" "drag cost del" "drag margin del"}
   .cat-drag-handle{grid-area:drag;align-self:start;margin-top:4px}
   .cat-name{grid-area:name}
-  .cat-row .cat-num:nth-of-type(1){grid-area:charge}
-  .cat-row:not(.cat-row-svc) .cat-num:nth-of-type(2){grid-area:cost}
-  .cat-row-svc .cat-num:nth-of-type(2){grid-area:labor}
-  .cat-row-svc .cat-num:nth-of-type(3){grid-area:cost}
+  .cat-row .cat-num:nth-of-type(2){grid-area:charge}
+  .cat-row:not(.cat-row-svc) .cat-num:nth-of-type(3){grid-area:cost}
+  .cat-row-svc .cat-num:nth-of-type(3){grid-area:labor}
+  .cat-row-svc .cat-num:nth-of-type(4){grid-area:cost}
   .cat-margin{grid-area:margin;text-align:left}
   .cat-row>.btn{grid-area:del;align-self:start}
   .cat-row .cat-num{text-align:left}
