@@ -257,7 +257,7 @@ function renderCatalog(){
   <div class="card">
     <div class="card-head"><div class="eyebrow"><i class="ti ti-tools"></i> Services</div><button class="btn btn-sm" onclick="addCatalogItem('service')"><i class="ti ti-plus"></i> Add service</button></div>
     <p class="hint" style="margin-bottom:14px">Set what you charge and what each one costs you. Margin updates automatically and feeds the dashboard profit.</p>
-    <div class="cat-head"><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
+    <div class="cat-head cat-head-svc"><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
     ${SERVICES.map(s=>catalogRow('service',s)).join('')}
   </div>
   <div class="card">
@@ -267,14 +267,17 @@ function renderCatalog(){
   </div>`;
 }
 function catalogRow(type,it){
-  const margin=(it.price||0)-(it.cost||0);
-  const nm=(it.name||'').replace(/"/g,'&quot;');
-  return `<div class="cat-row">
-    <input class="cat-name" type="text" value="${nm}" onchange="updateCatalog('${type}','${it.id}','name',this.value)">
-    <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
-    <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
-    <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
-    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove “${nm}” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
+  const isSvc=type==='service';
+  const margin=isSvc?(it.price||0)-(it.laborCost||0)-(it.cost||0):(it.price||0)-(it.cost||0);
+  const nm=(it.name||'').replace(/”/g,'&quot;');
+  const laborCell=isSvc?`<input class=”cat-num” type=”number” value=”${it.laborCost||0}” onchange=”updateCatalog('${type}','${it.id}','laborCost',parseFloat(this.value)||0)”>`:'' ;
+  return `<div class=”cat-row${isSvc?' cat-row-svc':''}”>
+    <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
+    <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
+    ${laborCell}
+    <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
+    <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
+    <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”deleteCatalog('${type}','${it.id}')”><i class=”ti ti-trash”></i></button>
   </div>`;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
@@ -291,6 +294,7 @@ async function updateCatalog(type,id,field,val){
   if(!it)return;
   try{
     const payload={name:it.name,price:it.price||0,cost:it.cost||0};
+    if(type==='service')payload.laborCost=it.laborCost||0;
     payload[field]=val;
     const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update failed');}
@@ -300,17 +304,21 @@ async function updateCatalog(type,id,field,val){
     showView('catalog');
   }catch(err){console.error('updateCatalog error',err);toast('Error saving item');showView('catalog');}
 }
-async function deleteCatalog(type,id){
-  try{
-    const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE'});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
-    if(type==='service')SERVICES=SERVICES.filter(x=>String(x.id)!==String(id));
-    else PRODUCTS=PRODUCTS.filter(x=>String(x.id)!==String(id));
-    showView('catalog');toast('Removed');
-  }catch(err){console.error('deleteCatalog error',err);toast('Error removing item');}
+function deleteCatalog(type,id){
+  const it=catalogList(type).find(x=>String(x.id)===String(id));
+  const nm=it?(it.name||'item'):'item';
+  confirmAction(`Remove "${nm}" from the catalog?`,async()=>{
+    try{
+      const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE'});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+      if(type==='service')SERVICES=SERVICES.filter(x=>String(x.id)!==String(id));
+      else PRODUCTS=PRODUCTS.filter(x=>String(x.id)!==String(id));
+      showView('catalog');toast('Removed');
+    }catch(err){console.error('deleteCatalog error',err);toast('Error removing item');}
+  });
 }
 async function addCatalogItem(type){
-  const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,location:activeLoc};
+  const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,...(type==='service'?{laborCost:0}:{}),location:activeLoc};
   try{
     const resp=await apiFetch(catalogEndpoint(type),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
@@ -350,6 +358,7 @@ function renderSettings(){
         <div class="callout callout-green" style="margin-bottom:8px"><i class="ti ti-file-invoice"></i><div><strong>Receipt or invoice</strong><div style="color:var(--ink-500);margin-top:1px">Sent when a job is completed</div></div></div>
         <div class="callout callout-green"><i class="ti ti-star"></i><div><strong>Review request</strong><div style="color:var(--ink-500);margin-top:1px">Sent with the receipt after payment</div></div></div>
       </div>
+      ${renderEmailTemplates()}
       <div class="card">
         <div class="section-title"><i class="ti ti-route"></i> Lead sources</div>
         <p class="hint" style="margin-bottom:12px">The “how did you hear about us” choices shown when adding a customer — ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
@@ -378,6 +387,54 @@ async function saveSettings(btn){
     toast('Settings saved');
     showView('settings');
   }catch(err){console.error('saveSettings error',err);toast('Error saving settings');}
+  finally{setBtnLoading(btn,false);}
+}
+function renderEmailTemplates(){
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const vars=[
+    ['{{customerName}}','Customer\'s full name'],
+    ['{{date}}','Job date (e.g. Mon, Jan 5)'],
+    ['{{time}}','Appointment time (e.g. 10:00 AM)'],
+    ['{{services}}','Services booked, comma-separated'],
+    ['{{address}}','Service address'],
+    ['{{techName}}','Assigned technician\'s name'],
+    ['{{businessName}}','Your company name'],
+    ['{{phone}}','Your phone number'],
+    ['{{reviewLink}}','Your Google review link'],
+    ['{{total}}','Total charged — for receipt email'],
+  ];
+  return `<div class="card">
+    <div class="section-title"><i class="ti ti-mail-cog"></i> Email templates</div>
+    <p class="hint" style="margin-bottom:14px">Write your own message for each email. Leave blank to use the default. Anything in <code style="font-size:11px;color:var(--accent)">{{curly braces}}</code> gets replaced with real info before sending.</p>
+    <div class="tpl-ref">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-400);margin-bottom:8px">Placeholders — copy these exactly as written</div>
+      ${vars.map(([k,v])=>`<div class="tpl-ref-row"><code>${k}</code><span>${v}</span></div>`).join('')}
+    </div>
+    <div class="tpl-section">
+      <div class="tpl-label"><i class="ti ti-calendar-check" style="color:var(--accent)"></i> Confirmation email <span class="tpl-badge tpl-badge-blue">Sent when job is booked</span></div>
+      <textarea class="tpl-area" id="tpl-confirm" placeholder="Write your booking confirmation message here…">${esc(SETTINGS.emailTplConfirm)}</textarea>
+    </div>
+    <div class="tpl-section">
+      <div class="tpl-label"><i class="ti ti-file-invoice" style="color:#1a6b2e"></i> Receipt / Invoice email <span class="tpl-badge tpl-badge-green">PDF invoice attached automatically</span></div>
+      <p class="tpl-hint"><i class="ti ti-paperclip" style="font-size:11px"></i> A PDF invoice is always attached to this email. Your template is the message body only.</p>
+      <textarea class="tpl-area" id="tpl-receipt" placeholder="Write your receipt or invoice message here…">${esc(SETTINGS.emailTplReceipt)}</textarea>
+    </div>
+    <button class="btn btn-primary" onclick="saveEmailTemplates(this)"><i class="ti ti-check"></i> Save templates</button>
+  </div>`;
+}
+async function saveEmailTemplates(btn){
+  const payload={
+    emailTplConfirm:document.getElementById('tpl-confirm').value,
+    emailTplReceipt:document.getElementById('tpl-receipt').value,
+  };
+  setBtnLoading(btn,true,'Saving…');
+  try{
+    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
+    const updated=await resp.json();
+    SETTINGS={...SETTINGS,...updated};
+    toast('Templates saved');
+  }catch(err){console.error('saveEmailTemplates error',err);toast('Error saving templates');}
   finally{setBtnLoading(btn,false);}
 }
 function renderPasswordSettings(){
