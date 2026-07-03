@@ -257,7 +257,7 @@ function renderCatalog(){
   <div class="card">
     <div class="card-head"><div class="eyebrow"><i class="ti ti-tools"></i> Services</div><button class="btn btn-sm" onclick="addCatalogItem('service')"><i class="ti ti-plus"></i> Add service</button></div>
     <p class="hint" style="margin-bottom:14px">Set what you charge and what each one costs you. Margin updates automatically and feeds the dashboard profit.</p>
-    <div class="cat-head cat-head-svc"><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
+    <div class="svc-head"><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
     ${SERVICES.map(s=>catalogRow('service',s)).join('')}
   </div>
   <div class="card">
@@ -271,7 +271,7 @@ function catalogRow(type,it){
   const margin=isSvc?(it.price||0)-(it.laborCost||0)-(it.cost||0):(it.price||0)-(it.cost||0);
   const nm=(it.name||'').replace(/”/g,'&quot;');
   const laborCell=isSvc?`<input class=”cat-num” type=”number” value=”${it.laborCost||0}” onchange=”updateCatalog('${type}','${it.id}','laborCost',parseFloat(this.value)||0)”>`:'' ;
-  return `<div class=”cat-row${isSvc?' cat-row-svc':''}”>
+  return `<div class=”${isSvc?'svc-row':'cat-row'}”>
     <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
     <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
     ${laborCell}
