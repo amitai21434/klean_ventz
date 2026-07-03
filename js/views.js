@@ -252,18 +252,17 @@ function exportFinancialsCsv(){
 }
 
 /* ---------------------------------------------------------- CATALOG */
-let _catDragType=null,_catDragId=null;
 function renderCatalog(){
   return `
   <div class=”card”>
     <div class=”card-head”><div class=”eyebrow”><i class=”ti ti-tools”></i> Services</div><button class=”btn btn-sm” onclick=”addCatalogItem('service')”><i class=”ti ti-plus”></i> Add service</button></div>
     <p class=”hint” style=”margin-bottom:14px”>Set what you charge and your costs. Labor = worker pay per service. Material = parts/supplies cost.</p>
-    <div class=”cat-head cat-head-svc”><span></span><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
+    <div class=”cat-head cat-head-svc”><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
     ${SERVICES.map(s=>catalogRow('service',s)).join('')}
   </div>
   <div class=”card”>
     <div class=”card-head”><div class=”eyebrow”><i class=”ti ti-package”></i> Products</div><button class=”btn btn-sm” onclick=”addCatalogItem('product')”><i class=”ti ti-plus”></i> Add product</button></div>
-    <div class=”cat-head”><span></span><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
+    <div class=”cat-head”><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
     ${PRODUCTS.map(p=>catalogRow('product',p)).join('')}
   </div>`;
 }
@@ -271,47 +270,23 @@ function catalogRow(type,it){
   const nm=(it.name||'').replace(/”/g,'&quot;');
   if(type==='service'){
     const margin=(it.price||0)-(it.cost||0)-(it.laborCost||0);
-    return `<div class=”cat-row cat-row-svc” draggable=”true” data-type=”${type}” data-id=”${it.id}” ondragstart=”catDragStart(event,'${type}','${it.id}')” ondragend=”catDragEnd(event)” ondragover=”catDragOver(event)” ondragleave=”catDragLeave(event)” ondrop=”catDrop(event,'${type}','${it.id}')”>
-      <span class=”cat-drag-handle”><i class=”ti ti-grip-vertical”></i></span>
+    return `<div class=”cat-row cat-row-svc”>
       <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
       <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
       <input class=”cat-num” type=”number” value=”${it.laborCost||0}” onchange=”updateCatalog('${type}','${it.id}','laborCost',parseFloat(this.value)||0)”>
       <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
       <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
-      <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove ${nm} from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
+      <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”deleteCatalog('${type}','${it.id}')”><i class=”ti ti-trash”></i></button>
     </div>`;
   }
   const margin=(it.price||0)-(it.cost||0);
-  return `<div class=”cat-row” draggable=”true” data-type=”${type}” data-id=”${it.id}” ondragstart=”catDragStart(event,'${type}','${it.id}')” ondragend=”catDragEnd(event)” ondragover=”catDragOver(event)” ondragleave=”catDragLeave(event)” ondrop=”catDrop(event,'${type}','${it.id}')”>
-    <span class=”cat-drag-handle”><i class=”ti ti-grip-vertical”></i></span>
+  return `<div class=”cat-row”>
     <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
     <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
     <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
     <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
-    <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”confirmAction('Remove ${nm} from the catalog?',()=>deleteCatalog('${type}','${it.id}'))”><i class=”ti ti-trash”></i></button>
+    <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”deleteCatalog('${type}','${it.id}')”><i class=”ti ti-trash”></i></button>
   </div>`;
-}
-function catDragStart(evt,type,id){_catDragType=type;_catDragId=id;evt.currentTarget.classList.add('dragging');}
-function catDragEnd(evt){evt.currentTarget.classList.remove('dragging');document.querySelectorAll('.cat-row.drag-over').forEach(el=>el.classList.remove('drag-over'));}
-function catDragOver(evt){evt.preventDefault();const row=evt.currentTarget;if(row.dataset.type===_catDragType)row.classList.add('drag-over');}
-function catDragLeave(evt){evt.currentTarget.classList.remove('drag-over');}
-function catDrop(evt,type,targetId){
-  evt.preventDefault();
-  evt.currentTarget.classList.remove('drag-over');
-  if(type!==_catDragType||_catDragId===targetId)return;
-  const arr=type==='service'?SERVICES:PRODUCTS;
-  const fromIdx=arr.findIndex(x=>String(x.id)===String(_catDragId));
-  const toIdx=arr.findIndex(x=>String(x.id)===String(targetId));
-  if(fromIdx<0||toIdx<0)return;
-  const [item]=arr.splice(fromIdx,1);arr.splice(toIdx,0,item);
-  saveCatalogOrder(type,arr);
-  showView('catalog');
-}
-function saveCatalogOrder(type,arr){
-  const key=type==='service'?'crm_serviceOrder':'crm_productOrder';
-  const ids=arr.map(x=>String(x.id));
-  localStorage.setItem(key,JSON.stringify(ids));
-  SETTINGS[type==='service'?'serviceOrder':'productOrder']=ids;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
 function catalogEndpoint(type){return type==='service'?API_BASE+'/api/services':API_BASE+'/api/products';}
@@ -336,14 +311,18 @@ async function updateCatalog(type,id,field,val){
     showView('catalog');
   }catch(err){console.error('updateCatalog error',err);toast('Error saving item');showView('catalog');}
 }
-async function deleteCatalog(type,id){
-  try{
-    const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE'});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
-    if(type==='service')SERVICES=SERVICES.filter(x=>String(x.id)!==String(id));
-    else PRODUCTS=PRODUCTS.filter(x=>String(x.id)!==String(id));
-    showView('catalog');toast('Removed');
-  }catch(err){console.error('deleteCatalog error',err);toast('Error removing item');}
+function deleteCatalog(type,id){
+  const it=catalogList(type).find(x=>String(x.id)===String(id));
+  const nm=it?it.name||'this item':'this item';
+  confirmAction('Remove '+nm+' from the catalog?',async()=>{
+    try{
+      const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE'});
+      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+      if(type==='service')SERVICES=SERVICES.filter(x=>String(x.id)!==String(id));
+      else PRODUCTS=PRODUCTS.filter(x=>String(x.id)!==String(id));
+      showView('catalog');toast('Removed');
+    }catch(err){console.error('deleteCatalog error',err);toast('Error removing item');}
+  });
 }
 async function addCatalogItem(type){
   const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,location:activeLoc};
