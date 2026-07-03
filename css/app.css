@@ -547,7 +547,7 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
 .ms-create{color:var(--ink-900);font-weight:600;cursor:pointer;text-decoration:underline}
 .ls-manage{max-height:300px;overflow-y:auto;padding-right:4px}
 
-@media(max-width:920px){
+@media(max-width:600px){
   .cat-head{display:none}
   .cat-row{grid-template-columns:1fr 36px;grid-template-areas:"name del" "charge del" "cost del" "margin del";row-gap:6px;padding:12px 4px}
   .cat-row.cat-row-svc{grid-template-areas:"name del" "charge del" "labor del" "cost del" "margin del"}
