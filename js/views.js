@@ -257,40 +257,36 @@ function renderCatalog(){
   <div class=”card”>
     <div class=”card-head”><div class=”eyebrow”><i class=”ti ti-tools”></i> Services</div><button class=”btn btn-sm” onclick=”addCatalogItem('service')”><i class=”ti ti-plus”></i> Add service</button></div>
     <p class=”hint” style=”margin-bottom:14px”>Set what you charge and your costs. Labor = worker pay per service. Material = parts/supplies cost.</p>
-    <table class=”cat-table”>
-      <thead><tr><th>Item</th><th>Charge</th><th>Labor</th><th>Material</th><th>Margin</th><th></th></tr></thead>
-      <tbody>${SERVICES.map(s=>catalogRow('service',s)).join('')}</tbody>
-    </table>
+    <div class=”cat-head cat-head-svc”><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
+    ${SERVICES.map(s=>catalogRow('service',s)).join('')}
   </div>
   <div class=”card”>
     <div class=”card-head”><div class=”eyebrow”><i class=”ti ti-package”></i> Products</div><button class=”btn btn-sm” onclick=”addCatalogItem('product')”><i class=”ti ti-plus”></i> Add product</button></div>
-    <table class=”cat-table”>
-      <thead><tr><th>Item</th><th>Charge</th><th>Cost</th><th>Margin</th><th></th></tr></thead>
-      <tbody>${PRODUCTS.map(p=>catalogRow('product',p)).join('')}</tbody>
-    </table>
+    <div class=”cat-head”><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
+    ${PRODUCTS.map(p=>catalogRow('product',p)).join('')}
   </div>`;
 }
 function catalogRow(type,it){
   const nm=(it.name||'').replace(/”/g,'&quot;');
   if(type==='service'){
     const margin=(it.price||0)-(it.cost||0)-(it.laborCost||0);
-    return `<tr>
-      <td><input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”></td>
-      <td><input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”></td>
-      <td><input class=”cat-num” type=”number” value=”${it.laborCost||0}” onchange=”updateCatalog('${type}','${it.id}','laborCost',parseFloat(this.value)||0)”></td>
-      <td><input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”></td>
-      <td><span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span></td>
-      <td><button class=”btn btn-sm btn-icon” title=”Remove” onclick=”deleteCatalog('${type}','${it.id}')”><i class=”ti ti-trash”></i></button></td>
-    </tr>`;
+    return `<div class=”cat-row cat-row-svc”>
+      <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
+      <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
+      <input class=”cat-num” type=”number” value=”${it.laborCost||0}” onchange=”updateCatalog('${type}','${it.id}','laborCost',parseFloat(this.value)||0)”>
+      <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
+      <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
+      <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”deleteCatalog('${type}','${it.id}')”><i class=”ti ti-trash”></i></button>
+    </div>`;
   }
   const margin=(it.price||0)-(it.cost||0);
-  return `<tr>
-    <td><input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”></td>
-    <td><input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”></td>
-    <td><input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”></td>
-    <td><span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span></td>
-    <td><button class=”btn btn-sm btn-icon” title=”Remove” onclick=”deleteCatalog('${type}','${it.id}')”><i class=”ti ti-trash”></i></button></td>
-  </tr>`;
+  return `<div class=”cat-row”>
+    <input class=”cat-name” type=”text” value=”${nm}” onchange=”updateCatalog('${type}','${it.id}','name',this.value)”>
+    <input class=”cat-num” type=”number” value=”${it.price||0}” onchange=”updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)”>
+    <input class=”cat-num” type=”number” value=”${it.cost||0}” onchange=”updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)”>
+    <span class=”cat-margin ${margin>=0?'pos':'neg'}”>${money(margin)}</span>
+    <button class=”btn btn-sm btn-icon” title=”Remove” onclick=”deleteCatalog('${type}','${it.id}')”><i class=”ti ti-trash”></i></button>
+  </div>`;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
 function catalogEndpoint(type){return type==='service'?API_BASE+'/api/services':API_BASE+'/api/products';}

@@ -503,14 +503,22 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
 .inv-foot{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);text-align:center;font-size:12px;color:var(--ink-500)}
 
 /* ============================================================ CATALOG */
-.cat-table{width:100%;border-collapse:collapse}
-.cat-table th{padding:0 8px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);text-align:left;white-space:nowrap}
-.cat-table th:nth-child(n+2){text-align:right}
-.cat-table td{padding:4px 8px;border-top:1px solid var(--line);vertical-align:middle}
-.cat-table td:nth-child(n+2){text-align:right;white-space:nowrap;width:1%}
+.cat-head{
+  display:grid;grid-template-columns:1fr 92px 92px 78px 36px;gap:10px;align-items:center;
+  padding:0 4px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400);
+}
+.cat-head.cat-head-svc{grid-template-columns:1fr 92px 92px 92px 78px 36px;}
+.cat-head span:nth-child(n+2){text-align:right}
+.cat-row{
+  display:grid;grid-template-columns:1fr 92px 92px 78px 36px;gap:10px;align-items:center;
+  padding:4px;border-bottom:1px solid var(--line);
+}
+.cat-row.cat-row-svc{grid-template-columns:1fr 92px 92px 92px 78px 36px;}
+.cat-row:last-child{border-bottom:none}
+.cat-row input{min-width:0;padding:5px 8px;border-radius:6px}
 .cat-name{font-weight:600}
-.cat-num{text-align:right;font-family:var(--font-mono);font-size:12.5px;width:88px}
-.cat-margin{font-family:var(--font-mono);font-size:13px;font-weight:600}
+.cat-num{text-align:right;font-family:var(--font-mono);font-size:12.5px}
+.cat-margin{text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600}
 .cat-margin.pos{color:var(--green)}
 .cat-margin.neg{color:var(--red)}
 
