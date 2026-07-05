@@ -253,17 +253,24 @@ function exportFinancialsCsv(){
 }
 
 /* ---------------------------------------------------------- CATALOG */
+let _catDragId=null,_catDragType=null,_catDragOk=false;
+function catalogDragEnable(ok){_catDragOk=ok;}
+function catalogDragStart(e,el,id,type){if(!_catDragOk){e.preventDefault();return;}_catDragId=String(id);_catDragType=type;e.dataTransfer.effectAllowed='move';setTimeout(()=>el.style.opacity='.4',0);}
+function catalogDragEnd(e,el){_catDragOk=false;el.style.opacity='';document.querySelectorAll('.svc-row,.cat-row').forEach(r=>r.classList.remove('drag-over'));}
+function catalogDragOver(e,el,id,type){if(_catDragType!==type)return;e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.svc-row,.cat-row').forEach(r=>r.classList.remove('drag-over'));el.classList.add('drag-over');}
+function catalogDragLeave(e,el){el.classList.remove('drag-over');}
+function catalogDrop(e,el,id,type){e.preventDefault();el.classList.remove('drag-over');if(!_catDragId||_catDragId===String(id)||_catDragType!==type)return;const arr=type==='service'?SERVICES:PRODUCTS;const fromIdx=arr.findIndex(x=>String(x.id)===_catDragId);const toIdx=arr.findIndex(x=>String(x.id)===String(id));if(fromIdx<0||toIdx<0)return;const[moved]=arr.splice(fromIdx,1);arr.splice(toIdx,0,moved);const orderKey=type==='service'?'serviceOrder':'productOrder';SETTINGS[orderKey]=arr.map(x=>x.id);apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(SETTINGS)});document.getElementById('content').innerHTML=renderCatalog();}
 function renderCatalog(){
   return `
   <div class="card">
     <div class="card-head"><div class="eyebrow"><i class="ti ti-tools"></i> Services</div><button class="btn btn-sm" onclick="addCatalogItem('service')"><i class="ti ti-plus"></i> Add service</button></div>
     <p class="hint" style="margin-bottom:14px">Set what you charge and what each one costs you. Margin updates automatically and feeds the dashboard profit.</p>
-    <div class="svc-head"><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
+    <div class="svc-head"><span></span><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
     ${SERVICES.map(s=>catalogRow('service',s)).join('')}
   </div>
   <div class="card">
     <div class="card-head"><div class="eyebrow"><i class="ti ti-package"></i> Products</div><button class="btn btn-sm" onclick="addCatalogItem('product')"><i class="ti ti-plus"></i> Add product</button></div>
-    <div class="cat-head"><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
+    <div class="cat-head"><span></span><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
     ${PRODUCTS.map(p=>catalogRow('product',p)).join('')}
   </div>`;
 }
@@ -271,7 +278,8 @@ function catalogRow(type,it){
   if(type==='service'){
     const margin=(it.price||0)-(it.laborCost||0)-(it.cost||0);
     const nm=(it.name||'').replace(/"/g,'&quot;');
-    return `<div class="svc-row">
+    return `<div class="svc-row" draggable="true" ondragstart="catalogDragStart(event,this,'${it.id}','service')" ondragend="catalogDragEnd(event,this)" ondragover="catalogDragOver(event,this,'${it.id}','service')" ondragleave="catalogDragLeave(event,this)" ondrop="catalogDrop(event,this,'${it.id}','service')">
+    <span class="cat-drag-handle" title="Drag to reorder" onmousedown="catalogDragEnable(true)" onmouseup="catalogDragEnable(false)"><i class="ti ti-grip-vertical"></i></span>
     <input class="cat-name" type="text" value="${nm}" onchange="updateCatalog('service','${it.id}','name',this.value)">
     <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('service','${it.id}','price',parseFloat(this.value)||0)">
     <input class="cat-num" type="number" value="${it.laborCost||0}" onchange="updateCatalog('service','${it.id}','laborCost',parseFloat(this.value)||0)">
@@ -282,7 +290,8 @@ function catalogRow(type,it){
   }
   const margin=(it.price||0)-(it.cost||0);
   const nm=(it.name||'').replace(/"/g,'&quot;');
-  return `<div class="cat-row">
+  return `<div class="cat-row" draggable="true" ondragstart="catalogDragStart(event,this,'${it.id}','product')" ondragend="catalogDragEnd(event,this)" ondragover="catalogDragOver(event,this,'${it.id}','product')" ondragleave="catalogDragLeave(event,this)" ondrop="catalogDrop(event,this,'${it.id}','product')">
+    <span class="cat-drag-handle" title="Drag to reorder" onmousedown="catalogDragEnable(true)" onmouseup="catalogDragEnable(false)"><i class="ti ti-grip-vertical"></i></span>
     <input class="cat-name" type="text" value="${nm}" onchange="updateCatalog('${type}','${it.id}','name',this.value)">
     <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
     <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
@@ -341,7 +350,7 @@ function workerPayFor(j,rate){if(!rate||!rate.payType)return null;if(rate.payTyp
 function renderWorkers(){
   const techs=(CRM_USERS||[]).filter(u=>(u.role||'').toLowerCase()==='technician');
   const rates=(SETTINGS.workerRates||{});
-  if(!techs.length)return`<div style="text-align:center;padding:60px 24px;color:var(--ink-400)"><i class="ti ti-users-group" style="font-size:48px;display:block;margin-bottom:12px"></i><div style="font-weight:600;font-size:15px;margin-bottom:6px">No workers yet</div><div style="font-size:13px">Add technicians in <strong>Settings → Add user</strong> with the Technician role.</div><div style="font-size:11px;margin-top:12px;opacity:.5">debug: ${CRM_USERS.length} users loaded · roles: ${[...new Set(CRM_USERS.map(u=>u.role||'null'))].join(', ')||'none'}${window._usersErr?' · error: '+window._usersErr:''}</div></div>`;
+  if(!techs.length)return`<div style="text-align:center;padding:60px 24px;color:var(--ink-400)"><i class="ti ti-users-group" style="font-size:48px;display:block;margin-bottom:12px"></i><div style="font-weight:600;font-size:15px;margin-bottom:6px">No workers yet</div><div style="font-size:13px">Add technicians in <strong>Settings → Add user</strong> with the Technician role.</div></div>`;
   return`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px">
     ${techs.map(w=>{
       const rate=rates[w.id]||{};
