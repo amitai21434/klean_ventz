@@ -1,4 +1,4 @@
-/* ============================================================
+﻿/* ============================================================
    VIEWS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â render functions + router
    ============================================================ */
 function showView(v){
@@ -366,7 +366,7 @@ function renderSettings(){
       ${renderEmailTemplates()}
       <div class="card">
         <div class="section-title"><i class="ti ti-route"></i> Lead sources</div>
-        <p class="hint" style="margin-bottom:12px">The ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œhow did you hear about usÃƒÂ¢Ã¢â€šÂ¬Ã‚Â choices shown when adding a customer ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
+        <p class="hint" style="margin-bottom:12px">The “how did you hear about us” choices shown when adding a customer — ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
         <div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="new-lead-source" placeholder="Add a lead source\u2026" onkeydown="if(event.key==='Enter')addLeadSource()"><button class="btn" onclick="addLeadSource()"><i class="ti ti-plus"></i></button></div>
         <div id="lead-source-list" class="ls-manage">${LEAD_SOURCES.map(leadRow).join('')}</div>
       </div>
@@ -382,7 +382,7 @@ async function saveSettings(btn){
     email: document.getElementById('set-email').value.trim(),
     googleReviewUrl: document.getElementById('set-review').value.trim()||SETTINGS.googleReviewUrl
   };
-  setBtnLoading(btn,true,'SavingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦');
+  setBtnLoading(btn,true,'Saving…');
   try{
     const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
@@ -406,11 +406,11 @@ function renderEmailTemplates(){
     ['{{businessName}}','Your company name'],
     ['{{phone}}','Your phone number'],
     ['{{reviewLink}}','Your Google review page link'],
-    ['{{total}}','Total amount charged â€” receipt email only'],
+    ['{{total}}','Total amount charged — receipt email only'],
   ];
   return `<div class="card">
     <div class="section-title"><i class="ti ti-mail-cog"></i> Email templates</div>
-    <p class="hint" style="margin-bottom:16px">Write your own message for each email. Copy any placeholder below and paste it into your text â€” it gets swapped for real info before the email sends. Leave blank to use the default.</p>
+    <p class="hint" style="margin-bottom:16px">Write your own message for each email. Copy any placeholder below and paste it into your text — it gets swapped for real info before the email sends. Leave blank to use the default.</p>
     <div class="tpl-ref">
       <div class="tpl-ref-title">What you can use in your messages</div>
       ${vars.map(([k,v])=>`<div class="tpl-var-row"><span class="tpl-var-code">${k}</span><span class="tpl-var-desc">${v}</span></div>`).join('')}
@@ -438,7 +438,7 @@ async function saveEmailTemplates(btn){
     emailTplConfirm:document.getElementById('tpl-confirm').value,
     emailTplReceipt:document.getElementById('tpl-receipt').value,
   };
-  setBtnLoading(btn,true,'Savingâ€¦');
+  setBtnLoading(btn,true,'Saving…');
   try{
     const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
