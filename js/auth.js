@@ -14,24 +14,19 @@ function isTechnician(){return currentProfile&&currentProfile.role==='technician
 function renderLogin(){
   document.body.innerHTML=`
   <div style="min-height:100vh;display:grid;place-items:center;background:var(--paper);padding:24px">
-    <div style="width:min(400px,100%);display:flex;flex-direction:column;align-items:center;gap:0">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:28px">
-        <div style="width:88px;height:88px;border-radius:50%;overflow:hidden;box-shadow:var(--sh-pop);border:3px solid #fff;flex-shrink:0">
+    <div style="width:min(380px,100%);display:flex;flex-direction:column;align-items:center;gap:20px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div style="width:76px;height:76px;border-radius:50%;overflow:hidden;box-shadow:var(--sh-pop);border:3px solid var(--surface)">
           <img src="assets/logo.jpg" alt="Klean Ventz" style="width:100%;height:100%;object-fit:cover;display:block">
         </div>
-        <div style="text-align:center">
-          <div style="font-size:22px;font-weight:800;letter-spacing:-.03em;color:var(--ink-900);line-height:1.1">Klean Ventz</div>
-          <div style="font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-400);margin-top:4px">Field Service CRM</div>
-        </div>
+        <div style="font-size:21px;font-weight:800;letter-spacing:-.025em;color:var(--ink-900)">Klean Ventz CRM</div>
       </div>
-      <div style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--sh-2);padding:28px 28px 24px">
-        <div style="font-size:15px;font-weight:700;color:var(--ink-900);margin-bottom:20px">Sign in to your workspace</div>
-        <div class="field"><label>Email</label><input type="email" id="auth-email" autocomplete="email" placeholder="you@company.com" style="width:100%"></div>
-        <div class="field"><label>Password</label><input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')signIn()" style="width:100%"></div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;padding:10px 14px;font-size:14px" onclick="signIn()"><i class="ti ti-login"></i> Sign in</button>
-        <p style="font-size:12px;color:var(--red);margin-top:12px;text-align:center;min-height:18px" id="auth-msg"></p>
+      <div class="card" style="width:100%;margin:0">
+        <div class="field"><label>Email</label><input type="email" id="auth-email" autocomplete="email" placeholder="you@company.com"></div>
+        <div class="field" style="margin-bottom:20px"><label>Password</label><input type="password" id="auth-password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')signIn()"></div>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="signIn()"><i class="ti ti-login"></i> Sign in</button>
+        <p style="font-size:12px;color:var(--red);margin-top:10px;text-align:center;min-height:16px" id="auth-msg"></p>
       </div>
-      <div style="margin-top:20px;font-size:11px;color:var(--ink-400);text-align:center">Klean Ventz &copy; ${new Date().getFullYear()}</div>
     </div>
   </div>`;
 }
