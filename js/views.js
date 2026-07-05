@@ -280,10 +280,10 @@ function catalogRow(type,it){
     const nm=(it.name||'').replace(/"/g,'&quot;');
     return `<div class="svc-row" draggable="true" ondragstart="catalogDragStart(event,this,'${it.id}','service')" ondragend="catalogDragEnd(event,this)" ondragover="catalogDragOver(event,this,'${it.id}','service')" ondragleave="catalogDragLeave(event,this)" ondrop="catalogDrop(event,this,'${it.id}','service')">
     <span class="cat-drag-handle" title="Drag to reorder" onmousedown="catalogDragEnable(true)" onmouseup="catalogDragEnable(false)"><i class="ti ti-grip-vertical"></i></span>
-    <input class="cat-name" type="text" value="${nm}" onchange="updateCatalog('service','${it.id}','name',this.value)">
-    <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('service','${it.id}','price',parseFloat(this.value)||0)">
-    <input class="cat-num" type="number" value="${it.laborCost||0}" onchange="updateCatalog('service','${it.id}','laborCost',parseFloat(this.value)||0)">
-    <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('service','${it.id}','cost',parseFloat(this.value)||0)">
+    <input class="cat-name" type="text" autocomplete="off" value="${nm}" onchange="updateCatalog('service','${it.id}','name',this.value)">
+    <input class="cat-num" type="number" autocomplete="off" value="${it.price||0}" onchange="updateCatalog('service','${it.id}','price',parseFloat(this.value)||0)">
+    <input class="cat-num" type="number" autocomplete="off" value="${it.laborCost||0}" onchange="updateCatalog('service','${it.id}','laborCost',parseFloat(this.value)||0)">
+    <input class="cat-num" type="number" autocomplete="off" value="${it.cost||0}" onchange="updateCatalog('service','${it.id}','cost',parseFloat(this.value)||0)">
     <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
     <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove &quot;${nm}&quot; from the catalog?',()=>deleteCatalog('service','${it.id}'))"><i class="ti ti-trash"></i></button>
   </div>`;
@@ -292,9 +292,9 @@ function catalogRow(type,it){
   const nm=(it.name||'').replace(/"/g,'&quot;');
   return `<div class="cat-row" draggable="true" ondragstart="catalogDragStart(event,this,'${it.id}','product')" ondragend="catalogDragEnd(event,this)" ondragover="catalogDragOver(event,this,'${it.id}','product')" ondragleave="catalogDragLeave(event,this)" ondrop="catalogDrop(event,this,'${it.id}','product')">
     <span class="cat-drag-handle" title="Drag to reorder" onmousedown="catalogDragEnable(true)" onmouseup="catalogDragEnable(false)"><i class="ti ti-grip-vertical"></i></span>
-    <input class="cat-name" type="text" value="${nm}" onchange="updateCatalog('${type}','${it.id}','name',this.value)">
-    <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
-    <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
+    <input class="cat-name" type="text" autocomplete="off" value="${nm}" onchange="updateCatalog('${type}','${it.id}','name',this.value)">
+    <input class="cat-num" type="number" autocomplete="off" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
+    <input class="cat-num" type="number" autocomplete="off" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
     <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
     <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ${nm}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
   </div>`;
