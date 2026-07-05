@@ -77,7 +77,7 @@ function renderTasks(){
 
   if(typeof isOwner==='function'&&isOwner()&&CRM_USERS.length>1){
     const myId=typeof currentProfile!=='undefined'&&currentProfile?currentProfile.id:null;
-    const workers=CRM_USERS.filter(u=>u.id!==myId);
+    const workers=CRM_USERS.filter(u=>u.id!==myId&&(u.role||'').toLowerCase()!=='owner');
     const myTasks=tasks.filter(t=>!t.assignedTo||t.assignedTo===myId);
     let workerCols='';
     workers.forEach(w=>{
@@ -190,7 +190,7 @@ function openTaskModal(id){
     </div>
     <div class="field"><label>Phone or email <span class="optional-tag">optional - tap to call or email</span></label><input type="text" id="tk-contact" value="${t?tAttr(t.contact||''):''}" placeholder="(732) 555-0000  or  name@company.com"></div>
     <div class="field" style="margin:0"><label>Link a customer <span class="optional-tag">optional</span></label><select id="tk-cust"><option value="">\u2014 none \u2014</option>${custOpts}</select></div>
-    ${(typeof isOwner==='function'&&isOwner()&&CRM_USERS.length>1)?`<div class="field" style="margin-top:10px;margin-bottom:0"><label>Assign to <span class="optional-tag">optional</span></label><select id="tk-assign"><option value="">\u2014 myself \u2014</option>${CRM_USERS.filter(u=>u.id!==(typeof currentProfile!=='undefined'&&currentProfile?currentProfile.id:null)).map(u=>`<option value="${u.id}" ${t&&t.assignedTo===u.id?'selected':''}>${tEsc(u.name||u.email||'Worker')}</option>`).join('')}</select></div>`:''}
+    ${(typeof isOwner==='function'&&isOwner()&&CRM_USERS.length>1)?`<div class="field" style="margin-top:10px;margin-bottom:0"><label>Assign to <span class="optional-tag">optional</span></label><select id="tk-assign"><option value="">\u2014 myself \u2014</option>${CRM_USERS.filter(u=>u.id!==(typeof currentProfile!=='undefined'&&currentProfile?currentProfile.id:null)&&(u.role||'').toLowerCase()!=='owner').map(u=>`<option value="${u.id}" ${t&&t.assignedTo===u.id?'selected':''}>${tEsc(u.name||u.email||'Worker')}</option>`).join('')}</select></div>`:''}
     <p class="hint" style="margin-top:12px"><i class="ti ti-info-circle" style="font-size:13px;vertical-align:-1px"></i> Tasks with a date show up on your dashboard \u2014 and stay there as \u201cOverdue\u201d until you handle them.</p>
   </div>
   <div class="sheet-foot">${id?`<button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmAction('Delete this task? This can’t be undone.',()=>deleteTask(${id}))"><i class="ti ti-trash"></i> Delete</button>`:''}<button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveTask(${id||'null'})"><i class="ti ti-check"></i> ${id?'Save':'Add task'}</button></div>`);
