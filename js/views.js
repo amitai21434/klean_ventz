@@ -1,4 +1,4 @@
-﻿/* ============================================================
+﻿﻿/* ============================================================
    VIEWS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â render functions + router
    ============================================================ */
 function showView(v){
@@ -142,7 +142,7 @@ function renderJobs(){
     <td class="td-primary" data-label="Customer"><div class="cell-strong">${j.customerName}</div></td>
     <td data-label="Date" class="cell-mono">${fmtDate(j.date)} \u00b7 ${fmtTime(j.time)}</td>
     <td data-label="Services"><span class="cell-sub truncate">${j.services.map(svcName).join(', ')}</span></td>
-    <td data-label="Status"><span class="badge ${statusBadge(j.status)}">${j.status}</span></td>
+    <td data-label="Status"><span class="badge ${statusBadge(j.status)}">${j.status}</span>${j.payment&&j.payment.toLowerCase().includes('check')?`<span style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${j.checkDeposited?'var(--green-bg)':'var(--amber-bg)'};color:${j.checkDeposited?'var(--green)':'var(--amber)'};border:1px solid ${j.checkDeposited?'var(--green-line)':'var(--amber-line)'}"><i class="ti ti-${j.checkDeposited?'circle-check':'clock-hour-3'}" style="font-size:11px"></i> ${j.checkDeposited?'Deposited':'Deposit pending'}</span>`:''}</td>
     <td data-label="Total" class="cell-mono">${j.total?money(j.total):'\u2014'}</td>
     <td data-label="" style="text-align:right">${j.status==='scheduled'?`<button class="btn btn-sm btn-success" onclick="event.stopPropagation();openCompleteJob(${j.id})"><i class="ti ti-check"></i> Complete</button>`:`<button class="btn btn-sm" onclick="event.stopPropagation();openInvoice(${j.id})"><i class="ti ti-file-text"></i> Receipt</button>`}</td>
   </tr>`).join('')}</tbody></table></div></div>`;
