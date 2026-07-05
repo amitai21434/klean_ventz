@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Klean Ventz CRM</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
-<link rel="stylesheet" href="css/app.css?v=9">
+<link rel="stylesheet" href="css/app.css?v=10">
 </head>
 <body>
 <div id="app-loader">
@@ -16,7 +16,7 @@
 </div>
 <div id="conn-banner" class="conn-banner">
   <i class="ti ti-plug-connected-x"></i>
-  <span>Can’t connect to the server. Check that the backend is running.</span>
+  <span>Canâ€™t connect to the server. Check that the backend is running.</span>
   <button class="btn btn-sm" onclick="retryLoadData()">Retry</button>
 </div>
 <div class="app" id="app">
@@ -29,15 +29,15 @@
       <div class="brand-badge"><img src="assets/logo.jpg" alt="Klean Ventz"></div>
       <div class="brand-text">
         <h1 id="brand-name">Klean Ventz</h1>
-        <p id="brand-sub">Residential · New Jersey</p>
+        <p id="brand-sub">Residential Â· New Jersey</p>
       </div>
     </div>
 
     <div class="loc-switch">
       <div class="eyebrow"><i class="ti ti-map-pin" style="font-size:13px"></i> Location</div>
       <select id="loc-select" onchange="switchLocation(this.value)">
-        <option value="nj">New Jersey — Residential</option>
-        <option value="mw">Midwest — Commercial</option>
+        <option value="nj">New Jersey â€” Residential</option>
+        <option value="mw">Midwest â€” Commercial</option>
       </select>
       <div class="loc-lock"><i class="ti ti-lock" style="font-size:11px"></i> Owner only</div>
     </div>
@@ -81,12 +81,12 @@
 <div id="success-flourish" class="success-flourish"><i class="ti ti-circle-check"></i></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth.js?v=9"></script>
-<script src="js/data.js?v=9"></script>
-<script src="js/views.js?v=9"></script>
-<script src="js/leadsources.js?v=9"></script>
-<script src="js/tasks.js?v=9"></script>
-<script src="js/modals.js?v=9"></script>
+<script src="js/auth.js?v=10"></script>
+<script src="js/data.js?v=10"></script>
+<script src="js/views.js?v=10"></script>
+<script src="js/leadsources.js?v=10"></script>
+<script src="js/tasks.js?v=10"></script>
+<script src="js/modals.js?v=10"></script>
 <script>
   (async function init(){
     const authed=await initializeAuth();

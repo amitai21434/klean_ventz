@@ -1,5 +1,5 @@
 /* ============================================================
-   VIEWS â€” render functions + router
+   VIEWS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â render functions + router
    ============================================================ */
 function showView(v){
   if(typeof canView==='function'&&!canView(v)){toast('Owner access only');v='dashboard';}
@@ -286,7 +286,7 @@ function catalogRow(type,it){
     <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
     <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
     <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
-    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove â€œ${nm}â€ from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
+    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ${nm}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
   </div>`;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
@@ -363,9 +363,10 @@ function renderSettings(){
         <div class="callout callout-green" style="margin-bottom:8px"><i class="ti ti-file-invoice"></i><div><strong>Receipt or invoice</strong><div style="color:var(--ink-500);margin-top:1px">Sent when a job is completed</div></div></div>
         <div class="callout callout-green"><i class="ti ti-star"></i><div><strong>Review request</strong><div style="color:var(--ink-500);margin-top:1px">Sent with the receipt after payment</div></div></div>
       </div>
+      ${renderEmailTemplates()}
       <div class="card">
         <div class="section-title"><i class="ti ti-route"></i> Lead sources</div>
-        <p class="hint" style="margin-bottom:12px">The â€œhow did you hear about usâ€ choices shown when adding a customer â€” ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
+        <p class="hint" style="margin-bottom:12px">The ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œhow did you hear about usÃƒÂ¢Ã¢â€šÂ¬Ã‚Â choices shown when adding a customer ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
         <div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="new-lead-source" placeholder="Add a lead source\u2026" onkeydown="if(event.key==='Enter')addLeadSource()"><button class="btn" onclick="addLeadSource()"><i class="ti ti-plus"></i></button></div>
         <div id="lead-source-list" class="ls-manage">${LEAD_SOURCES.map(leadRow).join('')}</div>
       </div>
@@ -381,7 +382,7 @@ async function saveSettings(btn){
     email: document.getElementById('set-email').value.trim(),
     googleReviewUrl: document.getElementById('set-review').value.trim()||SETTINGS.googleReviewUrl
   };
-  setBtnLoading(btn,true,'Savingâ€¦');
+  setBtnLoading(btn,true,'SavingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦');
   try{
     const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
@@ -391,6 +392,60 @@ async function saveSettings(btn){
     toast('Settings saved');
     showView('settings');
   }catch(err){console.error('saveSettings error',err);toast('Error saving settings');}
+  finally{setBtnLoading(btn,false);}
+}
+function renderEmailTemplates(){
+  const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const vars=[
+    ['{{customerName}}','The customer\'s full name'],
+    ['{{date}}','Date of the appointment'],
+    ['{{time}}','Time of the appointment'],
+    ['{{services}}','Services that were booked'],
+    ['{{address}}','The service address'],
+    ['{{techName}}','The technician\'s name'],
+    ['{{businessName}}','Your company name'],
+    ['{{phone}}','Your phone number'],
+    ['{{reviewLink}}','Your Google review page link'],
+    ['{{total}}','Total amount charged â€” receipt email only'],
+  ];
+  return `<div class="card">
+    <div class="section-title"><i class="ti ti-mail-cog"></i> Email templates</div>
+    <p class="hint" style="margin-bottom:16px">Write your own message for each email. Copy any placeholder below and paste it into your text â€” it gets swapped for real info before the email sends. Leave blank to use the default.</p>
+    <div class="tpl-ref">
+      <div class="tpl-ref-title">What you can use in your messages</div>
+      ${vars.map(([k,v])=>`<div class="tpl-var-row"><span class="tpl-var-code">${k}</span><span class="tpl-var-desc">${v}</span></div>`).join('')}
+    </div>
+    <div class="tpl-section">
+      <div class="tpl-section-label">
+        <strong><i class="ti ti-calendar-check" style="font-size:15px;vertical-align:-2px;margin-right:3px"></i>Confirmation email</strong>
+        <span class="tpl-badge tpl-badge-neutral">Sent when a job is booked</span>
+      </div>
+      <textarea class="tpl-area" id="tpl-confirm" placeholder="e.g. Hi {{customerName}}, your appointment is confirmed for {{date}} at {{time}}. Weâ€™ll see you at {{address}}!">${esc(SETTINGS.emailTplConfirm)}</textarea>
+    </div>
+    <div class="tpl-section">
+      <div class="tpl-section-label">
+        <strong><i class="ti ti-file-invoice" style="font-size:15px;vertical-align:-2px;margin-right:3px"></i>Receipt / Invoice email</strong>
+        <span class="tpl-badge tpl-badge-green">PDF invoice attached automatically</span>
+      </div>
+      <p class="tpl-note"><i class="ti ti-info-circle" style="font-size:13px"></i> You write the message. The PDF invoice is generated and attached for you.</p>
+      <textarea class="tpl-area" id="tpl-receipt" placeholder="e.g. Hi {{customerName}}, thank you for choosing {{businessName}}! Please find your invoice attached. Total: {{total}}.">${esc(SETTINGS.emailTplReceipt)}</textarea>
+    </div>
+    <button class="btn btn-primary" onclick="saveEmailTemplates(this)"><i class="ti ti-check"></i> Save templates</button>
+  </div>`;
+}
+async function saveEmailTemplates(btn){
+  const payload={
+    emailTplConfirm:document.getElementById('tpl-confirm').value,
+    emailTplReceipt:document.getElementById('tpl-receipt').value,
+  };
+  setBtnLoading(btn,true,'Savingâ€¦');
+  try{
+    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
+    const updated=await resp.json();
+    SETTINGS={...SETTINGS,...updated};
+    toast('Templates saved');
+  }catch(err){console.error('saveEmailTemplates error',err);toast('Error saving templates');}
   finally{setBtnLoading(btn,false);}
 }
 function renderPasswordSettings(){
@@ -429,7 +484,7 @@ async function createCrmUser(btn){
   const role=document.getElementById('new-user-role').value;
   const password=document.getElementById('new-user-password').value;
   if(!email||!password)return toast('Enter email and temporary password');
-  setBtnLoading(btn,true,'Creatingâ€¦');
+  setBtnLoading(btn,true,'CreatingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦');
   try{
     const resp=await apiFetch(API_BASE+'/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,role,name})});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create user failed');}
@@ -458,7 +513,7 @@ async function createLeadSource(name){
   replaceLeadSourceRow(created);
   return created;
 }
-function leadRow(s){const esc=s.replace(/'/g,"\\'");return `<div class="lead-chip"><span>${s}</span><i class="ti ti-x" onclick="confirmAction('Remove lead source â€œ${esc}â€?',()=>removeLeadSource('${esc}'))"></i></div>`;}
+function leadRow(s){const esc=s.replace(/'/g,"\\'");return `<div class="lead-chip"><span>${s}</span><i class="ti ti-x" onclick="confirmAction('Remove lead source ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ${esc}ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â?',()=>removeLeadSource('${esc}'))"></i></div>`;}
 async function addLeadSource(){
   const inp=document.getElementById('new-lead-source');const val=inp.value.trim();if(!val)return;
   try{
