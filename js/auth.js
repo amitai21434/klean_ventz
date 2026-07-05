@@ -13,16 +13,21 @@ function isTechnician(){return currentProfile&&currentProfile.role==='technician
 
 function renderLogin(){
   document.body.innerHTML=`
-  <div class="auth-screen" style="min-height:100vh;display:grid;place-items:center;background:var(--surface-2);padding:24px">
-    <div class="card" style="width:min(420px,100%);margin:0">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
-        <div class="brand-badge" style="width:48px;height:48px"><img src="assets/logo.jpg" alt=""></div>
-        <div><div style="font-size:18px;font-weight:800">Klean Ventz CRM</div><div class="hint">Sign in to continue</div></div>
+  <div style="min-height:100vh;display:grid;place-items:center;background:var(--surface-2);padding:24px">
+    <div class="card" style="width:min(380px,100%);margin:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:24px">
+        <div style="width:72px;height:72px;border-radius:50%;overflow:hidden;border:2px solid var(--line);box-shadow:var(--sh-1);flex-shrink:0">
+          <img src="assets/logo.jpg" alt="Klean Ventz" style="width:100%;height:100%;object-fit:cover;display:block">
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:19px;font-weight:800;color:var(--ink-900);line-height:1.1">Klean Ventz CRM</div>
+          <div class="hint" style="margin-top:3px">Sign in to continue</div>
+        </div>
       </div>
       <div class="field"><label>Email</label><input type="email" id="auth-email" autocomplete="email" placeholder="you@company.com"></div>
       <div class="field"><label>Password</label><input type="password" id="auth-password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')signIn()"></div>
-      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="signIn()"><i class="ti ti-login"></i> Sign in</button>
-      <p class="hint" id="auth-msg" style="margin-top:12px"></p>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="signIn()"><i class="ti ti-login"></i> Sign in</button>
+      <p class="hint" id="auth-msg" style="margin-top:12px;text-align:center"></p>
     </div>
   </div>`;
 }
