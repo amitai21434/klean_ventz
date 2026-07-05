@@ -339,9 +339,9 @@ async function addCatalogItem(type){
 function workerInitials(name){const parts=(name||'?').trim().split(/\s+/);return(parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();}
 function workerPayFor(j,rate){if(!rate||!rate.payType)return null;if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;}
 function renderWorkers(){
-  const techs=(CRM_USERS||[]).filter(u=>u.role==='technician');
+  const techs=(CRM_USERS||[]).filter(u=>(u.role||'').toLowerCase()==='technician');
   const rates=(SETTINGS.workerRates||{});
-  if(!techs.length)return`<div style="text-align:center;padding:60px 24px;color:var(--ink-400)"><i class="ti ti-users-group" style="font-size:48px;display:block;margin-bottom:12px"></i><div style="font-weight:600;font-size:15px;margin-bottom:6px">No workers yet</div><div style="font-size:13px">Add technicians in <strong>Settings → Add user</strong> with the Technician role.</div></div>`;
+  if(!techs.length)return`<div style="text-align:center;padding:60px 24px;color:var(--ink-400)"><i class="ti ti-users-group" style="font-size:48px;display:block;margin-bottom:12px"></i><div style="font-weight:600;font-size:15px;margin-bottom:6px">No workers yet</div><div style="font-size:13px">Add technicians in <strong>Settings → Add user</strong> with the Technician role.</div><div style="font-size:11px;margin-top:12px;opacity:.5">debug: ${CRM_USERS.length} users loaded · roles: ${[...new Set(CRM_USERS.map(u=>u.role||'null'))].join(', ')||'none'}</div></div>`;
   return`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px">
     ${techs.map(w=>{
       const rate=rates[w.id]||{};
