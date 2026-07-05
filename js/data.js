@@ -399,8 +399,9 @@ async function loadData(baseUrl = API_BASE + '/api') {
       if(typeof isOwner==='function'&&isOwner()){
         const usersRes=await apiFetch(baseUrl+'/users');
         if(usersRes.ok){CRM_USERS=await usersRes.json();}
-      }
-    }catch(e){console.error('users load error',e);}
+        else{const t=await usersRes.text();console.error('users fetch failed',usersRes.status,t);window._usersErr=usersRes.status+': '+t;}
+      } else {console.warn('skipping users fetch — isOwner()=',isOwner(),'profile=',currentProfile);}
+    }catch(e){console.error('users load error',e);window._usersErr=''+e;}
     updateBrandUI();
 
     Object.keys(LOCATIONS).forEach(loc=>{
