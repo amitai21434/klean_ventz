@@ -518,6 +518,11 @@ table.inv-table td{padding:8px 0;border-bottom:1px solid var(--line)}
 .cat-margin{text-align:right;font-family:var(--font-mono);font-size:13px;font-weight:600}
 .cat-margin.pos{color:var(--green)}
 .cat-margin.neg{color:var(--red)}
+.svc-head{display:grid;grid-template-columns:1fr 92px 92px 92px 78px 36px;gap:10px;align-items:center;padding:0 4px 8px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-400)}
+.svc-head span:nth-child(2),.svc-head span:nth-child(3),.svc-head span:nth-child(4),.svc-head span:nth-child(5){text-align:right}
+.svc-row{display:grid;grid-template-columns:1fr 92px 92px 92px 78px 36px;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line)}
+.svc-row:last-child{border-bottom:none}
+.svc-row input{min-width:0}
 
 /* lead source chips */
 .lead-chip{

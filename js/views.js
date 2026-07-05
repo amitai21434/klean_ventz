@@ -1,5 +1,5 @@
 /* ============================================================
-   VIEWS — render functions + router
+   VIEWS â€” render functions + router
    ============================================================ */
 function showView(v){
   if(typeof canView==='function'&&!canView(v)){toast('Owner access only');v='dashboard';}
@@ -257,7 +257,7 @@ function renderCatalog(){
   <div class="card">
     <div class="card-head"><div class="eyebrow"><i class="ti ti-tools"></i> Services</div><button class="btn btn-sm" onclick="addCatalogItem('service')"><i class="ti ti-plus"></i> Add service</button></div>
     <p class="hint" style="margin-bottom:14px">Set what you charge and what each one costs you. Margin updates automatically and feeds the dashboard profit.</p>
-    <div class="cat-head"><span>Item</span><span>Charge</span><span>Cost</span><span>Margin</span><span></span></div>
+    <div class="svc-head"><span>Item</span><span>Charge</span><span>Labor</span><span>Material</span><span>Margin</span><span></span></div>
     ${SERVICES.map(s=>catalogRow('service',s)).join('')}
   </div>
   <div class="card">
@@ -267,6 +267,18 @@ function renderCatalog(){
   </div>`;
 }
 function catalogRow(type,it){
+  if(type==='service'){
+    const margin=(it.price||0)-(it.laborCost||0)-(it.cost||0);
+    const nm=(it.name||'').replace(/"/g,'&quot;');
+    return `<div class="svc-row">
+    <input class="cat-name" type="text" value="${nm}" onchange="updateCatalog('service','${it.id}','name',this.value)">
+    <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('service','${it.id}','price',parseFloat(this.value)||0)">
+    <input class="cat-num" type="number" value="${it.laborCost||0}" onchange="updateCatalog('service','${it.id}','laborCost',parseFloat(this.value)||0)">
+    <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('service','${it.id}','cost',parseFloat(this.value)||0)">
+    <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
+    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove &quot;${nm}&quot; from the catalog?',()=>deleteCatalog('service','${it.id}'))"><i class="ti ti-trash"></i></button>
+  </div>`;
+  }
   const margin=(it.price||0)-(it.cost||0);
   const nm=(it.name||'').replace(/"/g,'&quot;');
   return `<div class="cat-row">
@@ -274,7 +286,7 @@ function catalogRow(type,it){
     <input class="cat-num" type="number" value="${it.price||0}" onchange="updateCatalog('${type}','${it.id}','price',parseFloat(this.value)||0)">
     <input class="cat-num" type="number" value="${it.cost||0}" onchange="updateCatalog('${type}','${it.id}','cost',parseFloat(this.value)||0)">
     <span class="cat-margin ${margin>=0?'pos':'neg'}">${money(margin)}</span>
-    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove “${nm}” from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
+    <button class="btn btn-sm btn-icon" title="Remove" onclick="confirmAction('Remove â€œ${nm}â€ from the catalog?',()=>deleteCatalog('${type}','${it.id}'))"><i class="ti ti-trash"></i></button>
   </div>`;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
@@ -291,6 +303,7 @@ async function updateCatalog(type,id,field,val){
   if(!it)return;
   try{
     const payload={name:it.name,price:it.price||0,cost:it.cost||0};
+    if(type==='service')payload.laborCost=it.laborCost||0;
     payload[field]=val;
     const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update failed');}
@@ -310,7 +323,7 @@ async function deleteCatalog(type,id){
   }catch(err){console.error('deleteCatalog error',err);toast('Error removing item');}
 }
 async function addCatalogItem(type){
-  const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,location:activeLoc};
+  const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,...(type==='service'?{laborCost:0}:{}),location:activeLoc};
   try{
     const resp=await apiFetch(catalogEndpoint(type),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
@@ -352,7 +365,7 @@ function renderSettings(){
       </div>
       <div class="card">
         <div class="section-title"><i class="ti ti-route"></i> Lead sources</div>
-        <p class="hint" style="margin-bottom:12px">The “how did you hear about us” choices shown when adding a customer — ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
+        <p class="hint" style="margin-bottom:12px">The â€œhow did you hear about usâ€ choices shown when adding a customer â€” ${LEAD_SOURCES.length} on the list. Add or remove any time.</p>
         <div style="display:flex;gap:8px;margin-bottom:12px"><input type="text" id="new-lead-source" placeholder="Add a lead source\u2026" onkeydown="if(event.key==='Enter')addLeadSource()"><button class="btn" onclick="addLeadSource()"><i class="ti ti-plus"></i></button></div>
         <div id="lead-source-list" class="ls-manage">${LEAD_SOURCES.map(leadRow).join('')}</div>
       </div>
@@ -368,7 +381,7 @@ async function saveSettings(btn){
     email: document.getElementById('set-email').value.trim(),
     googleReviewUrl: document.getElementById('set-review').value.trim()||SETTINGS.googleReviewUrl
   };
-  setBtnLoading(btn,true,'Saving…');
+  setBtnLoading(btn,true,'Savingâ€¦');
   try{
     const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
@@ -416,7 +429,7 @@ async function createCrmUser(btn){
   const role=document.getElementById('new-user-role').value;
   const password=document.getElementById('new-user-password').value;
   if(!email||!password)return toast('Enter email and temporary password');
-  setBtnLoading(btn,true,'Creating…');
+  setBtnLoading(btn,true,'Creatingâ€¦');
   try{
     const resp=await apiFetch(API_BASE+'/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,role,name})});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create user failed');}
@@ -445,7 +458,7 @@ async function createLeadSource(name){
   replaceLeadSourceRow(created);
   return created;
 }
-function leadRow(s){const esc=s.replace(/'/g,"\\'");return `<div class="lead-chip"><span>${s}</span><i class="ti ti-x" onclick="confirmAction('Remove lead source “${esc}”?',()=>removeLeadSource('${esc}'))"></i></div>`;}
+function leadRow(s){const esc=s.replace(/'/g,"\\'");return `<div class="lead-chip"><span>${s}</span><i class="ti ti-x" onclick="confirmAction('Remove lead source â€œ${esc}â€?',()=>removeLeadSource('${esc}'))"></i></div>`;}
 async function addLeadSource(){
   const inp=document.getElementById('new-lead-source');const val=inp.value.trim();if(!val)return;
   try{
