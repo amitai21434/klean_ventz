@@ -25,7 +25,7 @@ async function saveWorkerPay(userId,btn){
   if(!SETTINGS.workerRates)SETTINGS.workerRates={};
   SETTINGS.workerRates[userId]={payType,payRate};
   try{
-    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(SETTINGS)});
+    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({workerRates:SETTINGS.workerRates})});
     if(!resp.ok)throw new Error('Save failed');
     closeModal();toast('Pay rate saved');showView('workers');
   }catch(e){toast('Error saving');setBtnLoading(btn,false);}

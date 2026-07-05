@@ -14,6 +14,7 @@ function showView(v){
     financials:['Financials','Revenue, cost & profit'],
     catalog:['Services & Products','What you offer and what it costs'],
     workers:['Workers','Your team & pay history'],
+    mypay:['My Pay','Your completed jobs & earnings'],
     settings:['Settings','Business & automation'],
   };
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -26,7 +27,7 @@ function showView(v){
     tasks:'<button class="btn btn-primary" onclick="openTaskModal()"><i class="ti ti-plus"></i><span class="btn-label"> New task</span></button>',
   };
   document.getElementById('topbar-actions').innerHTML=actions[v]||'';
-  const views={dashboard:renderDashboard,customers:renderCustomers,jobs:renderJobs,calendar:renderCalendar,tasks:renderTasks,leadsources:renderLeadSources,financials:renderFinancials,catalog:renderCatalog,workers:renderWorkers,settings:renderSettings};
+  const views={dashboard:renderDashboard,customers:renderCustomers,jobs:renderJobs,calendar:renderCalendar,tasks:renderTasks,leadsources:renderLeadSources,financials:renderFinancials,catalog:renderCatalog,workers:renderWorkers,mypay:renderMyPay,settings:renderSettings};
   document.getElementById('content').innerHTML=(views[v]||renderDashboard)();
   document.getElementById('content').scrollTop=0;
   closeNav();
@@ -239,9 +240,12 @@ function renderFinancials(){
     const arr=groups[k];
     const gross=arr.reduce((s,j)=>s+(j.total||0),0);
     const cost=arr.reduce((s,j)=>s+jobCost(j),0);
+    const wRates=SETTINGS.workerRates||{};
+    const labor=arr.reduce((s,j)=>{const w=(CRM_USERS||[]).find(u=>(u.name||u.email)===j.techName);if(!w)return s;const p=workerPayFor(j,wRates[w.id]);return s+(p||0);},0);
     const profit=gross-cost;
     const margin=gross?Math.round(profit/gross*100):0;
-    html+=`<div class="card"><div class="card-head" style="margin-bottom:14px"><div style="font-weight:700;font-size:17px;letter-spacing:-.01em">${periodLabel(k,finPeriod)}</div><span class="badge badge-ink">${arr.length} job${arr.length!==1?'s':''} \u00b7 ${margin}% margin</span></div><div class="grid3"><div class="stat"><div class="stat-label">Gross revenue</div><div class="stat-val sm">${money(gross)}</div></div><div class="stat accent-red"><div class="stat-label">Cost of goods</div><div class="stat-val sm">${money(cost)}</div></div><div class="stat accent-green"><div class="stat-label">Profit</div><div class="stat-val sm">${money(profit)}</div></div></div></div>`;
+    const gridCls=labor>0?'grid4':'grid3';
+    html+=`<div class="card"><div class="card-head" style="margin-bottom:14px"><div style="font-weight:700;font-size:17px;letter-spacing:-.01em">${periodLabel(k,finPeriod)}</div><span class="badge badge-ink">${arr.length} job${arr.length!==1?'s':''} \u00b7 ${margin}% margin</span></div><div class="${gridCls}"><div class="stat"><div class="stat-label">Gross revenue</div><div class="stat-val sm">${money(gross)}</div></div><div class="stat accent-red"><div class="stat-label">Cost of goods</div><div class="stat-val sm">${money(cost)}</div></div><div class="stat accent-green"><div class="stat-label">Profit</div><div class="stat-val sm">${money(profit)}</div></div>${labor>0?`<div class="stat"><div class="stat-label">Worker pay</div><div class="stat-val sm">${money(labor)}</div></div>`:''}</div></div>`;
   });
   return html;
 }
@@ -345,6 +349,28 @@ async function addCatalogItem(type){
 }
 
 /* ---------------------------------------------------------- WORKERS */
+function renderMyPay(){
+  const myId=currentUser&&currentUser.id;
+  const myName=(currentProfile&&(currentProfile.name||currentProfile.email))||'';
+  const rate=(SETTINGS.workerRates||{})[myId]||{};
+  const myJobs=jobs.filter(j=>j.status==='completed'&&j.techName===myName);
+  const rateLabel=rate.payType==='flat'?`${rate.payRate||0} flat per job`:rate.payType==='percent'?`${rate.payRate||0}% of job revenue`:'No pay rate set — contact the owner.';
+  const tabs=[['week','Week'],['month','Month'],['year','Year'],['all','All time']];
+  const groups={};
+  myJobs.forEach(j=>{const k=periodKey(j.date,finPeriod);(groups[k]=groups[k]||[]).push(j);});
+  const keys=Object.keys(groups).sort().reverse();
+  const totalPay=myJobs.reduce((s,j)=>{const p=workerPayFor(j,rate);return s+(p||0);},0);
+  let html=`<div class="card" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;padding:14px 18px"><div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><span class="eyebrow" style="margin:0">Break down by</span><div class="segmented">${tabs.map(t=>`<button class="${finPeriod===t[0]?'on':''}" onclick="setFinPeriod('${t[0]}')">${t[1]}</button>`).join('')}</div></div><div class="badge badge-ink" style="font-size:12px">${rateLabel}</div></div>`;
+  if(!myJobs.length){return html+`<div class="card"><div class="empty"><i class="ti ti-coin"></i>No completed jobs assigned to you yet.</div></div>`;}
+  html+=`<div class="grid3" style="margin-bottom:0"><div class="stat"><div class="stat-label">Jobs completed</div><div class="stat-val sm">${myJobs.length}</div></div><div class="stat accent-green"><div class="stat-label">Total earnings</div><div class="stat-val sm">${money(totalPay)}</div></div><div class="stat"><div class="stat-label">Avg per job</div><div class="stat-val sm">${myJobs.length?money(totalPay/myJobs.length):money(0)}</div></div></div>`;
+  if(!keys.length)return html;
+  keys.forEach(k=>{
+    const arr=groups[k];
+    const periodPay=arr.reduce((s,j)=>{const p=workerPayFor(j,rate);return s+(p||0);},0);
+    html+=`<div class="card"><div class="card-head" style="margin-bottom:10px"><div style="font-weight:700;font-size:16px">${periodLabel(k,finPeriod)}</div><span class="badge badge-ink">${arr.length} job${arr.length!==1?'s':''} · ${money(periodPay)}</span></div><table style="width:100%;border-collapse:collapse;font-size:13px">${arr.sort((a,b)=>b.date>a.date?1:-1).map(j=>{const pay=workerPayFor(j,rate);return`<tr style="border-bottom:1px solid var(--line)"><td style="padding:7px 0">${fmtDate(j.date)}</td><td style="padding:7px 0;color:var(--ink-500)">${tEsc(j.customerName||'—')}</td><td style="padding:7px 0;text-align:right;font-weight:600">${pay!=null?money(pay):'—'}</td></tr>`;}).join('')}</table></div>`;
+  });
+  return html;
+}
 function workerInitials(name){const parts=(name||'?').trim().split(/\s+/);return(parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();}
 function workerPayFor(j,rate){if(!rate||!rate.payType)return null;if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;}
 function renderWorkers(){
