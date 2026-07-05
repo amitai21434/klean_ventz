@@ -12,20 +12,22 @@ function isOwner(){return currentProfile&&currentProfile.role==='owner';}
 function isTechnician(){return currentProfile&&currentProfile.role==='technician';}
 
 function renderLogin(){
+  const inp='width:100%;padding:10px 12px;border:1px solid #DAD5CB;border-radius:10px;font-size:14px;color:#1A1815;font-family:inherit;outline:none;box-sizing:border-box;background:#fff';
+  const lbl='display:block;font-size:12px;font-weight:600;color:#46433D;margin-bottom:6px';
   document.body.innerHTML=`
-  <div style="min-height:100vh;display:grid;place-items:center;background:var(--paper);padding:24px">
+  <div style="min-height:100vh;display:grid;place-items:center;background:#F4F2EC;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">
     <div style="width:min(380px,100%);display:flex;flex-direction:column;align-items:center;gap:20px">
       <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
-        <div style="width:76px;height:76px;border-radius:50%;overflow:hidden;box-shadow:var(--sh-pop);border:3px solid var(--surface)">
+        <div style="width:80px;height:80px;border-radius:50%;overflow:hidden;box-shadow:0 12px 40px -8px rgba(24,22,18,.22),0 2px 8px rgba(24,22,18,.10);border:3px solid #fff;flex-shrink:0">
           <img src="assets/logo.jpg" alt="Klean Ventz" style="width:100%;height:100%;object-fit:cover;display:block">
         </div>
-        <div style="font-size:21px;font-weight:800;letter-spacing:-.025em;color:var(--ink-900)">Klean Ventz CRM</div>
+        <div style="font-size:21px;font-weight:800;letter-spacing:-.025em;color:#1A1815">Klean Ventz CRM</div>
       </div>
-      <div class="card" style="width:100%;margin:0">
-        <div class="field"><label>Email</label><input type="email" id="auth-email" autocomplete="email" placeholder="you@company.com"></div>
-        <div class="field" style="margin-bottom:20px"><label>Password</label><input type="password" id="auth-password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')signIn()"></div>
-        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="signIn()"><i class="ti ti-login"></i> Sign in</button>
-        <p style="font-size:12px;color:var(--red);margin-top:10px;text-align:center;min-height:16px" id="auth-msg"></p>
+      <div style="width:100%;background:#fff;border:1px solid #E7E3DB;border-radius:16px;padding:22px;box-shadow:0 4px 16px -4px rgba(24,22,18,.10),0 1px 3px rgba(24,22,18,.06)">
+        <div style="margin-bottom:14px"><label style="${lbl}">Email</label><input type="email" id="auth-email" autocomplete="email" placeholder="you@company.com" style="${inp}"></div>
+        <div style="margin-bottom:22px"><label style="${lbl}">Password</label><input type="password" id="auth-password" autocomplete="current-password" placeholder="Password" onkeydown="if(event.key==='Enter')signIn()" style="${inp}"></div>
+        <button onclick="signIn()" style="width:100%;padding:10px 14px;background:#181612;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Sign in</button>
+        <p id="auth-msg" style="font-size:12px;color:#A6382F;margin-top:10px;text-align:center;min-height:16px"></p>
       </div>
     </div>
   </div>`;
