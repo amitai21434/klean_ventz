@@ -84,7 +84,7 @@ async function signOut(){
 function applyRoleUI(){
   document.body.classList.toggle('role-owner',!!isOwner());
   document.body.classList.toggle('role-technician',!!isTechnician());
-  const restricted=['leadsources','financials','catalog'];
+  const restricted=['leadsources','financials','catalog','workers'];
   restricted.forEach(v=>{const el=document.getElementById('nav-'+v);if(el)el.style.display=isOwner()?'':'none';});
   document.querySelectorAll('.nav-label').forEach(label=>{
     if(label.textContent.trim()==='Business')label.style.display=isOwner()?'':'none';
@@ -98,5 +98,5 @@ function applyRoleUI(){
 }
 
 function canView(v){
-  return isOwner()||!['leadsources','financials','catalog'].includes(v);
+  return isOwner()||!['leadsources','financials','catalog','workers'].includes(v);
 }

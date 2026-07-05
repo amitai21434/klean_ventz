@@ -1,4 +1,53 @@
 /* ============================================================
+   WORKER PAY MODALS
+   ============================================================ */
+function openWorkerPay(userId){
+  const w=(CRM_USERS||[]).find(u=>u.id===userId);if(!w)return;
+  const rate=(SETTINGS.workerRates||{})[userId]||{payType:'flat',payRate:''};
+  showModal(`${headX('Pay Rate',tEsc(w.name||w.email))}
+  <div class="sheet-body">
+    <div class="field"><label>Pay type</label>
+      <select id="wpr-type" onchange="document.getElementById('wpr-lbl').textContent=this.value==='percent'?'Percentage of job revenue':'Flat amount per job'">
+        <option value="flat" ${rate.payType==='flat'?'selected':''}>Flat per job</option>
+        <option value="percent" ${rate.payType==='percent'?'selected':''}>% of job revenue</option>
+      </select>
+    </div>
+    <div class="field"><label id="wpr-lbl">${rate.payType==='percent'?'Percentage of job revenue':'Flat amount per job'}</label>
+      <input type="number" id="wpr-rate" value="${rate.payRate||''}" placeholder="${rate.payType==='percent'?'e.g. 25':'e.g. 80'}" min="0" step="0.01">
+    </div>
+  </div>
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveWorkerPay('${userId}',this)"><i class="ti ti-device-floppy"></i> Save</button></div>`);
+}
+async function saveWorkerPay(userId,btn){
+  setBtnLoading(btn,true,'Saving…');
+  const payType=document.getElementById('wpr-type').value;
+  const payRate=parseFloat(document.getElementById('wpr-rate').value)||0;
+  if(!SETTINGS.workerRates)SETTINGS.workerRates={};
+  SETTINGS.workerRates[userId]={payType,payRate};
+  try{
+    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(SETTINGS)});
+    if(!resp.ok)throw new Error('Save failed');
+    closeModal();toast('Pay rate saved');showView('workers');
+  }catch(e){toast('Error saving');setBtnLoading(btn,false);}
+}
+function openWorkerHistory(userId){
+  const w=(CRM_USERS||[]).find(u=>u.id===userId);if(!w)return;
+  const rate=(SETTINGS.workerRates||{})[userId]||{};
+  const wJobs=jobs.filter(j=>j.status==='completed'&&j.techName===w.name).sort((a,b)=>b.date.localeCompare(a.date));
+  const payFor=j=>{if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;};
+  const totalPay=wJobs.reduce((s,j)=>{const p=payFor(j);return s+(p||0);},0);
+  const rateLabel=rate.payType==='flat'?`${rate.payRate}/job`:rate.payType==='percent'?`${rate.payRate}% of revenue`:'No rate set';
+  showModal(`${headX('Pay History',tEsc(w.name||w.email))}
+  <div class="sheet-body">
+    ${wJobs.length&&rate.payType?`<div class="callout callout-green" style="margin-bottom:16px"><i class="ti ti-cash"></i><div><strong>${money(totalPay)} total earned</strong><div class="hint">${wJobs.length} job${wJobs.length!==1?'s':''} · ${rateLabel}</div></div></div>`:''}
+    ${wJobs.length?`<div style="overflow-x:auto"><table class="data"><thead><tr><th>Date</th><th>Customer</th><th>Revenue</th><th>Pay</th></tr></thead><tbody>
+      ${wJobs.map(j=>{const c=customers.find(x=>x.id===j.customerId)||{};const p=payFor(j);return `<tr class="row-link" onclick="openJob(${j.id})"><td data-label="Date">${fmtDate(j.date)}</td><td data-label="Customer">${tEsc(nameOf(c))}</td><td data-label="Revenue">${money(j.total)}</td><td data-label="Pay">${p!==null?money(p):'—'}</td></tr>`;}).join('')}
+    </tbody></table></div>`:`<p class="hint" style="text-align:center;padding:24px 0">No completed jobs assigned to ${tEsc(w.name||'this worker')} yet.</p>`}
+  </div>
+  <div class="sheet-foot"><button class="btn" onclick="closeModal()">Close</button></div>`,'wide');
+}
+
+/* ============================================================
    MODALS — flows + infra
    ============================================================ */
 function showModal(html,cls){document.getElementById('modal').innerHTML=`<div class="scrim" onclick="bgClose(event)"><div class="sheet${cls?' '+cls:''}">${html}</div></div>`;document.body.style.overflow='hidden';}
@@ -780,6 +829,7 @@ function openCompleteJob(id){
   <div class="sheet-body">
     <div class="callout callout-green" style="margin-bottom:14px"><i class="ti ti-calendar-check"></i><div><strong>${fmtDate(j.date)} \u00b7 <span id="cs-time-range">${timeRangeLabel(j.time,j.durationHours||2)}</span></strong><div style="color:var(--ink-500);margin-top:1px"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${addressLink(cc.address)}${cc.phone?' \u00b7 '+cc.phone:''}</div></div></div>
     <div class="field"><label>Job length <span class="optional-tag">set at booking</span></label><div class="callout callout-ink" style="padding:8px 12px;font-weight:600">${j.durationHours||2} hour${(j.durationHours||2)!==1?'s':''}</div></div>
+    ${(CRM_USERS||[]).filter(u=>u.role==='technician').length?`<div class="field"><label>Worker <span class="optional-tag">who did this job</span></label><select id="cs-tech"><option value="">— Not assigned —</option>${(CRM_USERS||[]).filter(u=>u.role==='technician').map(u=>`<option value="${tEsc(u.name||u.email)}" ${j.techName===(u.name||u.email)?'selected':''}>` + tEsc(u.name||u.email) + `</option>`).join('')}</select></div>`:''}
     <div class="section-title">Services performed</div>
     ${SERVICES.map(s=>{const q=qtyOf(j,s.id);const chk=j.services.includes(s.id);const bookedPrice=CS_PRICES[s.id]!=null?CS_PRICES[s.id]:s.price;return `<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${chk?'checked':''} onchange="csQtySync('${s.id}');recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="svc-qty-ctl" id="csqc-${s.id}" style="display:${chk?'inline-flex':'none'}"><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',-1)">−</button><span class="svc-qty-val" id="csqv-${s.id}">${chk?q:1}</span><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',1)">+</button></span><input type="number" class="svc-price-override" id="cspo-${s.id}" value="${chk?bookedPrice*q:''}" placeholder="${bookedPrice*q}" title="Line total" oninput="recalcCompleteTotal()" style="display:${chk?'inline-block':'none'}"><span class="price" id="cspl-${s.id}" style="display:${chk?'none':''}">$${bookedPrice}/ea</span></div>`;}).join('')}
     <div class="surcharge-box"><input type="checkbox" id="cs-surcharge" ${j.surcharge?'checked':''} onchange="recalcCompleteTotal()"><label>Above 2nd floor surcharge</label><input type="number" id="cs-surcharge-amt" value="${j.surchargeAmt||''}" placeholder="$0" oninput="recalcCompleteTotal()"></div>
@@ -878,6 +928,7 @@ function hydrateJobModal(j){
   j.techNotes=document.getElementById('cs-notes').value;
   j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;
   j.durationHours=CS_DURATION;
+  j.techName=document.getElementById('cs-tech')?.value||j.techName||'';
 }
 function resizeImage(file,maxDim=1600,quality=0.82){
   return new Promise(resolve=>{
@@ -949,7 +1000,8 @@ async function saveJobEdits(id,btn){
       photos:j.photos,
       nextServiceMonths:j.nextServiceMonths,
       durationHours:j.durationHours,
-      status:j.status
+      status:j.status,
+      techName:j.techName||''
     };
     const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}

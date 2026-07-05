@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Klean Ventz CRM</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
-<link rel="stylesheet" href="css/app.css?v=17">
+<link rel="stylesheet" href="css/app.css?v=18">
 </head>
 <body>
 <div id="app-loader">
@@ -53,6 +53,7 @@
       <div class="nav-item" id="nav-leadsources" onclick="showView('leadsources')"><i class="ti ti-chart-pie"></i> Lead Sources</div>
       <div class="nav-item" id="nav-financials" onclick="showView('financials')"><i class="ti ti-chart-bar"></i> Financials</div>
       <div class="nav-item" id="nav-catalog" onclick="showView('catalog')"><i class="ti ti-package"></i> Services &amp; Products</div>
+      <div class="nav-item" id="nav-workers" onclick="showView('workers')"><i class="ti ti-users-group"></i> Workers</div>
     </nav>
 
     <div class="nav-bottom">
@@ -81,12 +82,12 @@
 <div id="success-flourish" class="success-flourish"><i class="ti ti-circle-check"></i></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth.js?v=17"></script>
-<script src="js/data.js?v=17"></script>
-<script src="js/views.js?v=17"></script>
-<script src="js/leadsources.js?v=17"></script>
-<script src="js/tasks.js?v=17"></script>
-<script src="js/modals.js?v=17"></script>
+<script src="js/auth.js?v=18"></script>
+<script src="js/data.js?v=18"></script>
+<script src="js/views.js?v=18"></script>
+<script src="js/leadsources.js?v=18"></script>
+<script src="js/tasks.js?v=18"></script>
+<script src="js/modals.js?v=18"></script>
 <script>
   (async function init(){
     const authed=await initializeAuth();

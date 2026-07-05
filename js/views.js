@@ -13,6 +13,7 @@ function showView(v){
     leadsources:['Lead Sources','Which sources bring the work'],
     financials:['Financials','Revenue, cost & profit'],
     catalog:['Services & Products','What you offer and what it costs'],
+    workers:['Workers','Your team & pay history'],
     settings:['Settings','Business & automation'],
   };
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -25,7 +26,7 @@ function showView(v){
     tasks:'<button class="btn btn-primary" onclick="openTaskModal()"><i class="ti ti-plus"></i><span class="btn-label"> New task</span></button>',
   };
   document.getElementById('topbar-actions').innerHTML=actions[v]||'';
-  const views={dashboard:renderDashboard,customers:renderCustomers,jobs:renderJobs,calendar:renderCalendar,tasks:renderTasks,leadsources:renderLeadSources,financials:renderFinancials,catalog:renderCatalog,settings:renderSettings};
+  const views={dashboard:renderDashboard,customers:renderCustomers,jobs:renderJobs,calendar:renderCalendar,tasks:renderTasks,leadsources:renderLeadSources,financials:renderFinancials,catalog:renderCatalog,workers:renderWorkers,settings:renderSettings};
   document.getElementById('content').innerHTML=(views[v]||renderDashboard)();
   document.getElementById('content').scrollTop=0;
   closeNav();
@@ -332,6 +333,38 @@ async function addCatalogItem(type){
     replaceCatalogItem(type,created);
     showView('catalog');toast('Added - edit the details');
   }catch(err){console.error('addCatalogItem error',err);toast('Error adding item');}
+}
+
+/* ---------------------------------------------------------- WORKERS */
+function workerInitials(name){const parts=(name||'?').trim().split(/\s+/);return(parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();}
+function workerPayFor(j,rate){if(!rate||!rate.payType)return null;if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;}
+function renderWorkers(){
+  const techs=(CRM_USERS||[]).filter(u=>u.role==='technician');
+  const rates=(SETTINGS.workerRates||{});
+  if(!techs.length)return`<div style="text-align:center;padding:60px 24px;color:var(--ink-400)"><i class="ti ti-users-group" style="font-size:48px;display:block;margin-bottom:12px"></i><div style="font-weight:600;font-size:15px;margin-bottom:6px">No workers yet</div><div style="font-size:13px">Add technicians in <strong>Settings → Add user</strong> with the Technician role.</div></div>`;
+  return`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px">
+    ${techs.map(w=>{
+      const rate=rates[w.id]||{};
+      const wJobs=jobs.filter(j=>j.status==='completed'&&j.techName===w.name);
+      const totalPay=wJobs.reduce((s,j)=>{const p=workerPayFor(j,rate);return s+(p||0);},0);
+      const rateLabel=rate.payType==='flat'?`${rate.payRate}/job`:rate.payType==='percent'?`${rate.payRate}% of revenue`:'No rate set';
+      return`<div class="card" style="margin:0">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="width:44px;height:44px;border-radius:50%;background:var(--ink-900);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0">${workerInitials(w.name||w.email)}</div>
+          <div style="min-width:0"><div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tEsc(w.name||'—')}</div><div style="font-size:12px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${tEsc(w.email)}</div></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+          <span class="badge badge-ink">${rateLabel}</span>
+          <span class="badge">${wJobs.length} job${wJobs.length!==1?'s':''}</span>
+          ${totalPay>0?`<span class="badge" style="background:var(--green-bg);color:var(--green);border-color:var(--green-line)">${money(totalPay)} earned</span>`:''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="openWorkerPay('${w.id}')"><i class="ti ti-settings"></i> Pay rate</button>
+          ${wJobs.length?`<button class="btn btn-sm" onclick="openWorkerHistory('${w.id}')"><i class="ti ti-history"></i> History (${wJobs.length})</button>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 /* ---------------------------------------------------------- SETTINGS */
