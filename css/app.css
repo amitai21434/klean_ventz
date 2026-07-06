@@ -426,7 +426,7 @@ table.data td.cell-mono{white-space:nowrap}
 .sheet{
   background:var(--surface);border:1px solid var(--line);
   border-radius:18px;width:620px;max-width:100%;max-height:92vh;
-  overflow-y:auto;box-shadow:var(--sh-pop);
+  overflow-y:auto;overscroll-behavior:contain;box-shadow:var(--sh-pop);
   animation:sheet-in .22s cubic-bezier(.2,.7,.2,1);
 }
 .sheet.wide{width:860px}
@@ -768,7 +768,7 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
 
 /* ============================================================ BOOKING DUAL MODAL */
 .sheet.dual{
-  max-width:1300px;width:97vw;max-height:90vh;
+  max-width:1300px;width:97vw;max-height:90vh;max-height:90dvh;
   display:flex;flex-direction:row;overflow:hidden;
 }
 .sj-form-pane{
@@ -880,7 +880,7 @@ tr.mkt-total td{background:var(--surface-2);border-top:1.5px solid var(--line-st
 
   /* bottom-sheet modals */
   .scrim{padding:0;align-items:flex-end}
-  .sheet,.sheet.wide,.sheet.dual{width:100%;max-width:100%;max-height:94vh;border-radius:20px 20px 0 0}
+  .sheet,.sheet.wide,.sheet.dual{width:100%;max-width:100%;max-height:94vh;max-height:94dvh;border-radius:20px 20px 0 0}
   .sheet.dual{flex-direction:column;overflow:hidden}
   .sj-mob-tabs{display:flex;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--line)}
   .sj-cal-pane{display:none}
