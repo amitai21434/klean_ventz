@@ -3,7 +3,7 @@
    ============================================================ */
 const LOGO_SRC='assets/logo.jpg';
 const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
-const API_BASE='https://klean-ventz-api.fly.dev';
+const API_BASE='https://tactile-pointless-landlady.ngrok-free.dev';
 const NGROK_HEADERS={'ngrok-skip-browser-warning':'true'};
 
 /* fetch wrapper that attaches the current Supabase session token to every backend request */
