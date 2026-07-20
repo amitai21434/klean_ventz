@@ -740,7 +740,8 @@ async function sjSaveNewService(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,cost:0})});
+    const res=await apiFetch(API_BASE+'/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'svc'+Date.now(),name,price,cost:0})});
+    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
     const body=await res.json();const svc=Array.isArray(body)?body[0]:body;
     SERVICES.push(svc);
     const list=document.getElementById('sj-services-list');
@@ -758,7 +759,8 @@ async function sjSaveNewProduct(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,cost:0})});
+    const res=await apiFetch(API_BASE+'/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'prd'+Date.now(),name,price,cost:0})});
+    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
     const body=await res.json();const prd=Array.isArray(body)?body[0]:body;
     PRODUCTS.push(prd);
     const list=document.getElementById('sj-products-list');
@@ -776,7 +778,8 @@ async function csSaveNewService(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,cost:0})});
+    const res=await apiFetch(API_BASE+'/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'svc'+Date.now(),name,price,cost:0})});
+    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
     const body=await res.json();const svc=Array.isArray(body)?body[0]:body;
     SERVICES.push(svc);
     const list=document.getElementById('cs-services-list');
@@ -795,7 +798,8 @@ async function csSaveNewProduct(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,cost:0})});
+    const res=await apiFetch(API_BASE+'/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'prd'+Date.now(),name,price,cost:0})});
+    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
     const body=await res.json();const prd=Array.isArray(body)?body[0]:body;
     PRODUCTS.push(prd);
     const list=document.getElementById('cs-products-list');
