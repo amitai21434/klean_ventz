@@ -30,8 +30,9 @@ function svcName(id){const s=SERVICES.find(x=>x.id===id)||PRODUCTS.find(x=>x.id=
 function svcQtyName(id,qtys){const n=svcName(id);const q=(qtys&&qtys[id])||1;return q>1?`${q}× ${n}`:n;}
 function svcPrice(id){const s=SERVICES.find(x=>x.id===id)||PRODUCTS.find(x=>x.id===id);return s?s.price:0;}
 
-const PAYMENT_METHODS=['Cash','Check','Venmo','Zelle','CashApp','Invoice'];
+const PAYMENT_METHODS=['Cash','Check','Venmo','Zelle','CashApp','Wire','Invoice'];
 const NEXT_SERVICE=[6,12,24,36];
+const MEETING_FREQUENCIES=[{label:'Monthly',months:1},{label:'Quarterly',months:3},{label:'Semi-annual',months:6},{label:'Annual',months:12}];
 let LEAD_SOURCES=`Return Customer
 From Us Calling Back
 Google

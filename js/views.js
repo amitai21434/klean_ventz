@@ -146,7 +146,7 @@ function renderJobs(){
     <td data-label="Services"><span class="cell-sub truncate">${j.services.map(svcName).join(', ')}</span></td>
     <td data-label="Status"><span class="badge ${statusBadge(j.status)}">${j.status}</span>${j.payment&&j.payment.toLowerCase().includes('check')?`<span style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${j.checkDeposited?'var(--green-bg)':'var(--amber-bg)'};color:${j.checkDeposited?'var(--green)':'var(--amber)'};border:1px solid ${j.checkDeposited?'var(--green-line)':'var(--amber-line)'}"><i class="ti ti-${j.checkDeposited?'circle-check':'clock-hour-3'}" style="font-size:11px"></i> ${j.checkDeposited?'Deposited':'Deposit pending'}</span>`:''}</td>
     <td data-label="Total" class="cell-mono">${j.total?money(j.total):'\u2014'}</td>
-    <td data-label="" style="text-align:right">${j.status==='scheduled'?`<button class="btn btn-sm btn-success" onclick="event.stopPropagation();openCompleteJob(${j.id})"><i class="ti ti-check"></i> Complete</button>`:`<button class="btn btn-sm" onclick="event.stopPropagation();openInvoice(${j.id})"><i class="ti ti-file-text"></i> Receipt</button>`}</td>
+    <td data-label="" style="text-align:right">${j.status==='scheduled'?`<button class="btn btn-sm btn-success" onclick="event.stopPropagation();openCompleteJob(${j.id})"><i class="ti ti-check"></i> Complete</button>`:`<button class="btn btn-sm" onclick="event.stopPropagation();openInvoice(${j.id})"><i class="ti ti-file-text"></i> ${j.payment&&j.payment!=='Invoice'?'Receipt':'Invoice'}</button>`}</td>
   </tr>`).join('')}</tbody></table></div></div>`;
 }
 function exportJobsCsv(){
@@ -372,7 +372,7 @@ function renderMyPay(){
   return html;
 }
 function workerInitials(name){const parts=(name||'?').trim().split(/\s+/);return(parts[0][0]+(parts[1]?parts[1][0]:'')).toUpperCase();}
-function workerPayFor(j,rate){if(!rate||!rate.payType)return null;if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;}
+function workerPayFor(j,rate){if(j&&j.techPayOverride!=null)return j.techPayOverride;if(!rate||!rate.payType)return null;if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;}
 function renderWorkers(){
   const techs=(CRM_USERS||[]).filter(u=>(u.role||'').toLowerCase()==='technician');
   const rates=(SETTINGS.workerRates||{});

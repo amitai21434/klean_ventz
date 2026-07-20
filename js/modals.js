@@ -34,7 +34,7 @@ function openWorkerHistory(userId){
   const w=(CRM_USERS||[]).find(u=>u.id===userId);if(!w)return;
   const rate=(SETTINGS.workerRates||{})[userId]||{};
   const wJobs=jobs.filter(j=>j.status==='completed'&&j.techName===w.name).sort((a,b)=>b.date.localeCompare(a.date));
-  const payFor=j=>{if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;};
+  const payFor=j=>{if(j.techPayOverride!=null)return j.techPayOverride;if(rate.payType==='flat')return rate.payRate||0;if(rate.payType==='percent')return(j.total||0)*(rate.payRate||0)/100;return null;};
   const totalPay=wJobs.reduce((s,j)=>{const p=payFor(j);return s+(p||0);},0);
   const rateLabel=rate.payType==='flat'?`${rate.payRate}/job`:rate.payType==='percent'?`${rate.payRate}% of revenue`:'No rate set';
   showModal(`${headX('Pay History',tEsc(w.name||w.email))}
@@ -237,20 +237,57 @@ function msSync(id){
   }
 }
 
+/* ---------- repeatable additional addresses (address+name+phone) ---------- */
+const ADDR_LISTS={};
+function addrListMount(id,initial,custId){
+  ADDR_LISTS[id]={items:(initial||[]).map(a=>({address:a.address||'',name:a.name||'',phone:a.phone||''})),cust:custId||null};
+  return `<div id="${id}-rows">${addrListRows(id)}</div><button type="button" class="btn btn-sm" style="margin-top:6px" onclick="addrListAdd('${id}')"><i class="ti ti-plus"></i> Add another address</button>`;
+}
+function addrListRows(id){
+  const st=ADDR_LISTS[id];if(!st)return'';
+  if(!st.items.length)return '<p class="hint">No additional addresses.</p>';
+  return st.items.map((a,i)=>`<div class="field-row" style="margin-bottom:8px;align-items:flex-end">
+    <div class="field" style="margin:0;flex:2"><label>${i===0?'Address':''}</label><input type="text" value="${tEsc(a.address)}" placeholder="123 Main St, City, NJ" onchange="addrListUpdate('${id}',${i},'address',this.value)"></div>
+    <div class="field" style="margin:0"><label>${i===0?'Name':''}</label><input type="text" value="${tEsc(a.name)}" placeholder="Contact name" onchange="addrListUpdate('${id}',${i},'name',this.value)"></div>
+    <div class="field" style="margin:0"><label>${i===0?'Phone':''}</label><input type="tel" value="${tEsc(a.phone)}" placeholder="Phone" onchange="addrListUpdate('${id}',${i},'phone',this.value)"></div>
+    <button type="button" class="btn btn-sm" style="margin:0" onclick="addrListRemove('${id}',${i})"><i class="ti ti-x"></i></button>
+  </div>`).join('');
+}
+function addrListRepaint(id){const el=document.getElementById(id+'-rows');if(el)el.innerHTML=addrListRows(id);}
+function addrListAdd(id){const st=ADDR_LISTS[id];if(!st)return;st.items.push({address:'',name:'',phone:''});addrListRepaint(id);}
+function addrListRemove(id,i){const st=ADDR_LISTS[id];if(!st)return;st.items.splice(i,1);addrListRepaint(id);addrListPersist(id);}
+function addrListUpdate(id,i,field,val){const st=ADDR_LISTS[id];if(!st||!st.items[i])return;st.items[i][field]=val;addrListPersist(id);}
+function addrListRead(id){const st=ADDR_LISTS[id];if(!st)return[];return st.items.filter(a=>a.address||a.name||a.phone);}
+function addrListPersist(id){
+  const st=ADDR_LISTS[id];if(!st||!st.cust)return;
+  const c=customers.find(x=>x.id===st.cust);if(!c)return;
+  const arr=addrListRead(id);
+  c.additionalAddresses=arr;
+  updateCustomerFields(c,{additionalAddresses:arr}).catch(err=>{console.error('addrListPersist error',err);toast('Error saving addresses');});
+}
+
+function ncCompanyFieldsHtml(){
+  if(activeLoc==='mw'){
+    return `<div class="field"><label>Corporate name</label><input type="text" id="nc-corpname" placeholder="e.g. Meridian Health Group"></div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Facility</label><input type="text" id="nc-facility" placeholder="e.g. Main Campus"></div><div class="field" style="margin:0"><label>Contact title</label><input type="text" id="nc-contacttitle" placeholder="e.g. Facilities Manager"></div></div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Contact phone <span class="optional-tag">for billing</span></label><input type="tel" id="nc-contactphone" placeholder="(732) 555-0000"></div><div class="field" style="margin:0"><label>Meeting frequency</label><select id="nc-freq">${MEETING_FREQUENCIES.map(f=>`<option value="${f.months}" ${f.months===12?'selected':''}>${f.label}</option>`).join('')}</select></div></div>`;
+  }
+  return `<div class="field"><label>Company / landlord contact name</label><input type="text" id="nc-contact" placeholder="e.g. Okafor Properties (David)"></div>
+    <div class="field"><label>Contact phone <span class="optional-tag">for billing</span></label><input type="tel" id="nc-contactphone" placeholder="(732) 555-0000"></div>`;
+}
 function openNewCustomer(){
   showModal(`${headX('New customer','Add someone to the books')}
   <div class="sheet-body">
     <div class="section-title">Account type</div>
     <div class="check-row" style="margin-bottom:14px"><input type="checkbox" id="nc-iscompany"><label for="nc-iscompany">This is a company / landlord account</label></div>
-    <div id="nc-company-fields">
-      <div class="field"><label>Company / landlord contact name</label><input type="text" id="nc-contact" placeholder="e.g. Okafor Properties (David)"></div>
-      <div class="field"><label>Contact phone <span class="optional-tag">for billing</span></label><input type="tel" id="nc-contactphone" placeholder="(732) 555-0000"></div>
-    </div>
+    <div id="nc-company-fields">${ncCompanyFieldsHtml()}</div>
     <div class="section-title" style="margin-top:8px">Customer</div>
     <div class="field-row"><div class="field" style="margin:0"><label>First name</label><input type="text" id="nc-first" placeholder="Jane"></div><div class="field" style="margin:0"><label>Last name</label><input type="text" id="nc-last" placeholder="Smith"></div></div>
     <div class="field-row"><div class="field" style="margin:0"><label>Phone number</label><input type="tel" id="nc-phone" placeholder="(732) 555-0000"></div><div class="field" style="margin:0"><label>Second phone <span class="optional-tag">optional</span></label><input type="tel" id="nc-phone2" placeholder="(732) 555-0001"><input type="text" id="nc-phone2-label" placeholder="Name (e.g. Spouse, Work)" style="margin-top:6px;font-size:12px"></div></div>
+    <div class="check-row" style="margin-bottom:14px"><input type="checkbox" id="nc-whatsapp"><label for="nc-whatsapp">Customer has WhatsApp</label></div>
     <div class="field"><label>Email</label><input type="email" id="nc-email" placeholder="jane@email.com"></div>
     <div class="field addr-wrap"><label>Address <span class="optional-tag">populates from Google Maps</span></label><input type="text" id="nc-addr" placeholder="123 Main St, City, NJ" autocomplete="off" oninput="addrInput(this.value)" onblur="setTimeout(hideAddrSug,200)"><div id="addr-suggestions" class="addr-suggestions" style="display:none"></div></div>
+    <div class="field"><label>Additional addresses <span class="optional-tag">optional</span></label>${addrListMount('nc-addrlist',[])}</div>
     <div class="field"><label>Lead source(s) <span class="optional-tag">how did they hear about us \u2014 pick one or more</span></label>${msMount('nc-ls',[])}</div>
     <!-- Service requested removed: customers no longer store requested services -->
     <div class="section-title" style="margin-top:14px">Notes</div>
@@ -316,31 +353,44 @@ function addrInput(val){
 }
 function selectAddr(val){const inp=document.getElementById('nc-addr');if(inp)inp.value=val;hideAddrSug();}
 function hideAddrSug(){const box=document.getElementById('addr-suggestions');if(box)box.style.display='none';}
+function readNewCustomerForm(){
+  const firstName=document.getElementById('nc-first').value.trim();
+  const lastName=document.getElementById('nc-last').value.trim();
+  const isCompany=document.getElementById('nc-iscompany').checked;
+  const isMw=activeLoc==='mw';
+  const contactName=isMw?'':document.getElementById('nc-contact').value.trim();
+  const corporateName=isMw?document.getElementById('nc-corpname').value.trim():'';
+  const leadSources=msGet('nc-ls');
+  const payload={
+    isCompany: isCompany,
+    contactName: contactName,
+    contactPhone: document.getElementById('nc-contactphone').value,
+    corporateName: corporateName,
+    facility: isMw?document.getElementById('nc-facility').value.trim():'',
+    contactTitle: isMw?document.getElementById('nc-contacttitle').value.trim():'',
+    firstName: firstName,
+    lastName: lastName,
+    phone: document.getElementById('nc-phone').value,
+    phone2: document.getElementById('nc-phone2').value,
+    phone2Label: document.getElementById('nc-phone2-label').value,
+    hasWhatsapp: document.getElementById('nc-whatsapp').checked,
+    email: document.getElementById('nc-email').value,
+    address: document.getElementById('nc-addr').value,
+    additionalAddresses: addrListRead('nc-addrlist'),
+    leadSources: (leadSources||[]),
+    notes: document.getElementById('nc-notes').value,
+    lastService: null,
+    nextDue: null,
+    nextServiceMonths: isMw?(parseInt(document.getElementById('nc-freq').value)||12):12,
+    snoozeUntil: null,
+    location: activeLoc
+  };
+  return {firstName,lastName,contactName,corporateName,payload};
+}
 function saveNewCustomer(btn){
   (async function(){
-    const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
-    const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
-    if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
-    const leadSources=msGet('nc-ls');
-    const payload={
-      isCompany: isCompany,
-      contactName: contactName,
-      contactPhone: document.getElementById('nc-contactphone').value,
-      firstName: firstName,
-      lastName: lastName,
-      phone: document.getElementById('nc-phone').value,
-      phone2: document.getElementById('nc-phone2').value,
-      phone2Label: document.getElementById('nc-phone2-label').value,
-      email: document.getElementById('nc-email').value,
-      address: document.getElementById('nc-addr').value,
-      leadSources: (leadSources||[]),
-      notes: document.getElementById('nc-notes').value,
-      lastService: null,
-      nextDue: null,
-      nextServiceMonths: 12,
-      snoozeUntil: null,
-      location: activeLoc
-    };
+    const {firstName,lastName,contactName,corporateName,payload}=readNewCustomerForm();
+    if(!firstName&&!lastName&&!contactName&&!corporateName)return toast('Please enter a name');
     setBtnLoading(btn,true,'Saving…');
     try{
       const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -359,29 +409,8 @@ function saveNewCustomer(btn){
 
 function saveNewCustomerAndBook(btn){
   (async function(){
-    const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
-    const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
-    if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
-    const leadSources=msGet('nc-ls');
-    const payload={
-      isCompany: isCompany,
-      contactName: contactName,
-      contactPhone: document.getElementById('nc-contactphone').value,
-      firstName: firstName,
-      lastName: lastName,
-      phone: document.getElementById('nc-phone').value,
-      phone2: document.getElementById('nc-phone2').value,
-      phone2Label: document.getElementById('nc-phone2-label').value,
-      email: document.getElementById('nc-email').value,
-      address: document.getElementById('nc-addr').value,
-      leadSources: (leadSources||[]),
-      notes: document.getElementById('nc-notes').value,
-      lastService: null,
-      nextDue: null,
-      nextServiceMonths: 12,
-      snoozeUntil: null,
-      location: activeLoc
-    };
+    const {firstName,lastName,contactName,corporateName,payload}=readNewCustomerForm();
+    if(!firstName&&!lastName&&!contactName&&!corporateName)return toast('Please enter a name');
     setBtnLoading(btn,true,'Saving…');
     try{
       const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -402,22 +431,8 @@ function saveNewCustomerAndBook(btn){
 
 function saveNewCustomerAndLog(btn){
   (async function(){
-    const firstName=document.getElementById('nc-first').value.trim();const lastName=document.getElementById('nc-last').value.trim();
-    const isCompany=document.getElementById('nc-iscompany').checked;const contactName=document.getElementById('nc-contact').value.trim();
-    if(!firstName&&!lastName&&!contactName)return toast('Please enter a name');
-    const leadSources=msGet('nc-ls');
-    const payload={
-      isCompany,contactName,contactPhone:document.getElementById('nc-contactphone').value,
-      firstName,lastName,
-      phone:document.getElementById('nc-phone').value,
-      phone2:document.getElementById('nc-phone2').value,
-      phone2Label:document.getElementById('nc-phone2-label').value,
-      email:document.getElementById('nc-email').value,
-      address:document.getElementById('nc-addr').value,
-      leadSources:(leadSources||[]),
-      notes:document.getElementById('nc-notes').value,
-      lastService:null,nextDue:null,nextServiceMonths:12,snoozeUntil:null,location:activeLoc
-    };
+    const {firstName,lastName,contactName,corporateName,payload}=readNewCustomerForm();
+    if(!firstName&&!lastName&&!contactName&&!corporateName)return toast('Please enter a name');
     setBtnLoading(btn,true,'Saving…');
     try{
       const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -433,6 +448,16 @@ function saveNewCustomerAndLog(btn){
 }
 
 /* ---------------------------------------------------------- CUSTOMER DETAIL */
+function custCompanyFieldsHtml(c){
+  if(!c.isCompany)return'';
+  if(activeLoc==='mw'){
+    return `<div class="section-title">Corporate</div>
+    <div class="field"><label>Corporate name</label><input type="text" value="${tEsc(c.corporateName||'')}" onchange="updateCust(${c.id},'corporateName',this.value)"></div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Facility</label><input type="text" value="${tEsc(c.facility||'')}" onchange="updateCust(${c.id},'facility',this.value)"></div><div class="field" style="margin:0"><label>Contact title</label><input type="text" value="${tEsc(c.contactTitle||'')}" onchange="updateCust(${c.id},'contactTitle',this.value)"></div></div>
+    <div class="field-row"><div class="field" style="margin:0"><label>Contact phone</label><input type="tel" value="${c.contactPhone||''}" onchange="updateCust(${c.id},'contactPhone',this.value)"></div><div class="field" style="margin:0"><label>Meeting frequency</label><select onchange="updateCust(${c.id},'nextServiceMonths',this.value)">${MEETING_FREQUENCIES.map(f=>`<option value="${f.months}" ${(c.nextServiceMonths||12)===f.months?'selected':''}>${f.label}</option>`).join('')}</select></div></div>`;
+  }
+  return `<div class="section-title">Company / landlord</div><div class="field-row"><div class="field" style="margin:0"><label>Contact name</label><input type="text" value="${c.contactName||''}" onchange="updateCust(${c.id},'contactName',this.value)"></div><div class="field" style="margin:0"><label>Contact phone</label><input type="tel" value="${c.contactPhone||''}" onchange="updateCust(${c.id},'contactPhone',this.value)"></div></div>`;
+}
 function openCustomer(id){
   const c=customers.find(x=>x.id===id);if(!c)return;
   const cJobs=jobs.filter(j=>j.customerId===id);const phoneDigits=c.phone.replace(/[^0-9]/g,'');
@@ -447,16 +472,18 @@ function openCustomer(id){
       <div class="stat"><div class="stat-label">Next due</div><div class="stat-val sm">${c.nextDue?fmtDate(c.nextDue):'\u2014'}</div></div>
       <div class="stat"><div class="stat-label">Lead sources</div><div class="stat-val sm">${(c.leadSources&&c.leadSources.length)?c.leadSources.length:'\u2014'}</div></div>
     </div>
-    ${c.isCompany?`<div class="section-title">Company / landlord</div><div class="field-row"><div class="field" style="margin:0"><label>Contact name</label><input type="text" value="${c.contactName||''}" onchange="updateCust(${c.id},'contactName',this.value)"></div><div class="field" style="margin:0"><label>Contact phone</label><input type="tel" value="${c.contactPhone||''}" onchange="updateCust(${c.id},'contactPhone',this.value)"></div></div>`:''}
+    ${custCompanyFieldsHtml(c)}
     <div class="section-title" ${c.isCompany?'style="margin-top:16px"':''}>Customer details</div>
     <div class="field-row"><div class="field" style="margin:0"><label>First name</label><input type="text" value="${c.firstName}" onchange="updateCust(${c.id},'firstName',this.value)"></div><div class="field" style="margin:0"><label>Last name</label><input type="text" value="${c.lastName}" onchange="updateCust(${c.id},'lastName',this.value)"></div></div>
     <div class="field-row"><div class="field" style="margin:0"><label>Phone</label><input type="tel" value="${c.phone}" onchange="updateCust(${c.id},'phone',this.value)"></div><div class="field" style="margin:0"><label>Second phone</label><input type="tel" value="${c.phone2||''}" onchange="updateCust(${c.id},'phone2',this.value)" placeholder="\u2014"><input type="text" value="${tEsc(c.phone2Label||'')}" onchange="updateCust(${c.id},'phone2Label',this.value)" placeholder="Name (e.g. Spouse, Work)" style="margin-top:6px;font-size:12px"></div></div>
+    <div class="check-row" style="margin-bottom:14px"><input type="checkbox" id="cust-whatsapp-${c.id}" ${c.hasWhatsapp?'checked':''} onchange="updateCust(${c.id},'hasWhatsapp',this.checked)"><label for="cust-whatsapp-${c.id}">Customer has WhatsApp</label></div>
     <div class="field"><label>Email</label><input type="email" value="${c.email}" onchange="updateCust(${c.id},'email',this.value)"></div>
     <div class="field"><label>Address</label><input type="text" value="${c.address}" onchange="updateCust(${c.id},'address',this.value)"></div>
+    <div class="field"><label>Additional addresses <span class="optional-tag">optional</span></label>${addrListMount('custaddr'+c.id,c.additionalAddresses||[],c.id)}</div>
     <div class="field"><label>Lead source(s) <span class="optional-tag">how did they hear about us</span></label>${msMount('custls'+c.id,c.leadSources||[],c.id)}</div>
     <div class="field"><label>Notes</label><textarea onchange="updateCust(${c.id},'notes',this.value)">${c.notes}</textarea></div>
-    <div class="section-title">Service history</div>
-    ${sortedJobs.length?sortedJobs.map((j,i)=>`<div class="history-item"><div class="history-rail"><div class="dot ${j.status==='completed'?'':'amber'}"></div>${i<sortedJobs.length-1?'<div class="history-line"></div>':''}</div><div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:600">${fmtDate(j.date)} \u2014 ${j.services.map(id=>svcQtyName(id,j.serviceQtys)).join(', ')}</div><div class="cell-sub" style="margin-top:1px">${j.status}${j.total?' \u00b7 '+money(j.total):''}${j.payment?' \u00b7 '+j.payment:''}${j.photos&&j.photos.length?' \u00b7 '+j.photos.length+' photo'+(j.photos.length>1?'s':''):''}</div>${j.techNotes?`<div class="cell-sub" style="margin-top:3px">${j.techNotes}</div>`:''}</div></div>`).join(''):'<p class="hint">No service history yet.</p>'}
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">Service history<button class="btn btn-sm" onclick="openAddPastJob(${c.id})"><i class="ti ti-history"></i> Add past job</button></div>
+    ${sortedJobs.length?sortedJobs.map((j,i)=>`<div class="history-item" style="cursor:pointer" onclick="closeModal();openJob(${j.id})"><div class="history-rail"><div class="dot ${j.status==='completed'?'':'amber'}"></div>${i<sortedJobs.length-1?'<div class="history-line"></div>':''}</div><div style="min-width:0;flex:1"><div style="font-size:13.5px;font-weight:600">${fmtDate(j.date)} \u2014 ${j.services.map(id=>svcQtyName(id,j.serviceQtys)).join(', ')}</div><div class="cell-sub" style="margin-top:1px">${j.status}${j.total?' \u00b7 '+money(j.total):''}${j.payment?' \u00b7 '+j.payment:''}${j.photos&&j.photos.length?' \u00b7 '+j.photos.length+' photo'+(j.photos.length>1?'s':''):''}</div>${j.techNotes?`<div class="cell-sub" style="margin-top:3px">${j.techNotes}</div>`:''}</div></div>`).join(''):'<p class="hint">No service history yet.</p>'}
   </div>
   <div class="sheet-foot"><button class="btn" style="margin-right:auto;color:var(--red)" onclick="confirmDeleteCustomer(${id})"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="closeModal();openScheduleJobForCustomer(${id})"><i class="ti ti-calendar-plus"></i> Book job</button></div>`);
 }
@@ -491,6 +518,93 @@ function updateCust(id,field,val){
       if(!resp.ok){const txt=await resp.text();console.error('Update failed',txt);toast('Error saving');}
     }catch(err){console.error('updateCust error',err);toast('Error saving');}
   })();
+}
+
+/* ---------------------------------------------------------- ADD PAST (BACKFILLED) JOB */
+function openAddPastJob(customerId){
+  const cust=customers.find(c=>c.id===customerId);if(!cust)return;
+  paymentSet=new Set();
+  showModal(`${headX('Add past job',nameOf(cust)+' — backfilled from history')}
+  <div class="sheet-body">
+    <div class="callout callout-ink" style="margin-bottom:14px"><i class="ti ti-history"></i><div>This records an already-completed job in the past. No emails are sent.</div></div>
+    <div class="field"><label>Date completed</label><input type="date" id="ap-date" value="${dOff(0)}"></div>
+    ${(CRM_USERS||[]).filter(u=>u.role==='technician').length?`<div class="field"><label>Worker <span class="optional-tag">optional</span></label><select id="ap-tech"><option value="">— Not assigned —</option>${(CRM_USERS||[]).filter(u=>u.role==='technician').map(u=>`<option value="${tEsc(u.name||u.email)}">${tEsc(u.name||u.email)}</option>`).join('')}</select></div>`:''}
+    <div class="section-title">Services</div>
+    <div id="ap-services-list">${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="apsvc-${s.id}" onchange="apQtySync('${s.id}')"><label for="apsvc-${s.id}">${s.name}</label><span class="svc-qty-ctl" id="apqc-${s.id}" style="display:none"><button type="button" class="svc-qty-btn" onclick="apQtyAdj('${s.id}',-1)">−</button><span class="svc-qty-val" id="apqv-${s.id}">1</span><button type="button" class="svc-qty-btn" onclick="apQtyAdj('${s.id}',1)">+</button></span><input type="number" class="svc-price-override" id="appo-${s.id}" placeholder="${s.price}" title="Line total" oninput="apRecalcTotal()" style="display:none"><span class="price" id="appl-${s.id}">${money(s.price)}</span></div>`).join('')}</div>
+    <div class="section-title" style="margin-top:16px">Products</div>
+    <div id="ap-products-list">${PRODUCTS.map(p=>`<div class="check-row"><input type="checkbox" id="apprd-${p.id}" onchange="apRecalcTotal()"><label for="apprd-${p.id}">${p.name}</label><span class="price">${money(p.price)}</span></div>`).join('')}</div>
+    <div class="section-title" style="margin-top:16px">Payment</div>
+    <div class="field-row" style="margin-bottom:10px"><div class="field" style="margin:0"><label>Charge total</label><input type="number" id="ap-total" value="0" oninput="apUpdateNet()"></div><div class="field" style="margin:0"><label>Discount <span class="optional-tag">optional</span></label><input type="number" id="ap-discount" placeholder="0" oninput="apUpdateNet()"></div></div>
+    <div class="callout callout-ink" style="margin-bottom:14px;justify-content:space-between;align-items:center"><span style="font-weight:600;color:var(--ink-900)">Net collected</span><span class="mono" id="ap-net" style="font-size:18px;font-weight:700;color:var(--ink-900)">$0.00</span></div>
+    <label style="display:block;margin-bottom:7px">Payment method <span class="optional-tag">pick one or more</span></label>
+    <div class="pay-opts">${PAYMENT_METHODS.map(m=>`<div class="pay-opt-wrap"><div class="pay-opt" id="pay-${m}" onclick="togglePay('${m}')">${m}</div><input type="number" class="pay-amt" id="pamt-${m}" placeholder="$" style="display:none" oninput="syncPayLabel()"></div>`).join('')}</div>
+    <div class="section-title" style="margin-top:18px">Notes</div>
+    <div class="field"><label>Tech notes</label><textarea id="ap-notes" placeholder="What was done…"></textarea></div>
+    <div class="field"><label>Note to customer <span class="optional-tag">shown on invoice/receipt</span></label><textarea id="ap-customernote"></textarea></div>
+  </div>
+  <div class="sheet-foot"><button class="btn" onclick="closeModal();openCustomer(${customerId})">Cancel</button><button class="btn btn-primary" onclick="saveAddPastJob(${customerId},this)"><i class="ti ti-history"></i> Save past job</button></div>`);
+}
+function apQtySync(id){const cb=document.getElementById('apsvc-'+id);const on=cb?.checked;const ctl=document.getElementById('apqc-'+id);if(ctl)ctl.style.display=on?'inline-flex':'none';const po=document.getElementById('appo-'+id);if(po){po.style.display=on?'inline-block':'none';if(on&&!po.value){const s=SERVICES.find(x=>x.id===id);if(s)po.value=s.price||0;}}const pl=document.getElementById('appl-'+id);if(pl)pl.style.display=on?'none':'';if(!on){const v=document.getElementById('apqv-'+id);if(v)v.textContent='1';}apRecalcTotal();}
+function apQtyAdj(id,d){const el=document.getElementById('apqv-'+id);if(!el)return;const oldQ=parseInt(el.textContent||'1')||1;const q=Math.max(1,oldQ+d);const s=SERVICES.find(x=>x.id===id);const po=document.getElementById('appo-'+id);if(po){const curTotal=parseFloat(po.value);const unit=isNaN(curTotal)?(s?s.price||0:0):curTotal/oldQ;po.value=unit*q;}el.textContent=q;apRecalcTotal();}
+function apGetQtys(){const q={};SERVICES.forEach(s=>{const cb=document.getElementById('apsvc-'+s.id);if(cb?.checked){const v=document.getElementById('apqv-'+s.id);q[s.id]=parseInt(v?.textContent||'1')||1;}});return q;}
+function apGetPrices(){const p={};SERVICES.forEach(s=>{const cb=document.getElementById('apsvc-'+s.id);if(cb?.checked){const inp=document.getElementById('appo-'+s.id);if(inp&&inp.value!==''){const qEl=document.getElementById('apqv-'+s.id);const q=parseInt(qEl?.textContent||'1')||1;p[s.id]=(parseFloat(inp.value)||0)/q;}}});return p;}
+function apRecalcTotal(){
+  let t=0;
+  SERVICES.forEach(s=>{if(document.getElementById('apsvc-'+s.id)?.checked){const q=parseInt(document.getElementById('apqv-'+s.id)?.textContent||'1')||1;const pinp=document.getElementById('appo-'+s.id);const lineTotal=pinp?(parseFloat(pinp.value)||parseFloat(pinp.placeholder)||(s.price||0)*q):(s.price||0)*q;t+=lineTotal;}});
+  PRODUCTS.forEach(p=>{if(document.getElementById('apprd-'+p.id)?.checked)t+=p.price||0;});
+  const el=document.getElementById('ap-total');if(el)el.value=t;apUpdateNet();
+}
+function apUpdateNet(){const t=parseFloat(document.getElementById('ap-total').value)||0;const d=parseFloat(document.getElementById('ap-discount').value)||0;const el=document.getElementById('ap-net');if(el)el.textContent=money2(Math.max(0,t-d));}
+async function saveAddPastJob(customerId,btn){
+  const cust=customers.find(c=>c.id===customerId);if(!cust)return;
+  const services=SERVICES.filter(s=>document.getElementById('apsvc-'+s.id)?.checked).map(s=>s.id);
+  if(!services.length)return toast('Please select at least one service');
+  const products=PRODUCTS.filter(p=>document.getElementById('apprd-'+p.id)?.checked).map(p=>p.id);
+  const date=document.getElementById('ap-date').value;
+  if(!date)return toast('Please pick a date');
+  const discount=parseFloat(document.getElementById('ap-discount').value)||0;
+  const total=Math.max(0,(parseFloat(document.getElementById('ap-total').value)||0)-discount);
+  const nextServiceMonths=cust.nextServiceMonths||12;
+  const payload={
+    customerId, customerName:nameOf(cust),
+    date, time:'09:00', durationHours:2,
+    status:'completed',
+    services, serviceQtys:apGetQtys(), servicePrices:apGetPrices(),
+    products,
+    surcharge:false, surchargeAmt:0,
+    discount, discountReason:'',
+    total,
+    payment:getPaymentString(),
+    notes:'',
+    techNotes:document.getElementById('ap-notes').value,
+    customerNote:document.getElementById('ap-customernote').value,
+    techName:document.getElementById('ap-tech')?.value||'',
+    nextServiceMonths,
+    location:activeLoc
+  };
+  setBtnLoading(btn,true,'Saving…');
+  try{
+    const resp=await apiFetch(API_BASE+'/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
+    const json=await resp.json();
+    const created=Array.isArray(json)?json[0]:json;
+    if(!created)throw new Error('No job returned');
+    jobs.push(created);
+    nextJobId=Math.max(nextJobId,(created.id||0)+1);
+    const nd=new Date(date);nd.setMonth(nd.getMonth()+(created.nextServiceMonths||nextServiceMonths));
+    await updateCustomerFields(cust,{
+      lastService:date,
+      jobs:(cust.jobs||0)+1,
+      nextServiceMonths:created.nextServiceMonths||nextServiceMonths,
+      nextDue:nd.toISOString().slice(0,10)
+    });
+    await clearCustomerReminders(customerId);
+    try{await upsertReminder(customerId,nd.toISOString().slice(0,10),'Next service due',null);}
+    catch(err){console.error('auto-reminder error',err);}
+    closeModal();toast('Past job added');
+    openCustomer(customerId);
+  }catch(err){console.error('saveAddPastJob error',err);toast('Error saving job');}
+  finally{setBtnLoading(btn,false);}
 }
 
 function emailJobPayload(job,cust){
@@ -595,6 +709,7 @@ function openScheduleJob(prefillId){
       </div>
       <div class="field-row"><div class="field" style="margin:0"><label>Date</label><input type="date" id="sj-date" value="${dOff(1)}" oninput="sjSyncCalDate(this.value)"></div><div class="field" style="margin:0"><label>Start time</label><input type="time" id="sj-time" value="10:00" oninput="sjUpdateRange()"></div></div>
       <div class="field"><label>Job length</label><div class="segmented" id="sj-duration">${durationButtons(2,'sjSetDuration')}</div><div class="hint cell-mono" id="sj-time-range" style="margin-top:6px"></div></div>
+      ${(CRM_USERS||[]).filter(u=>u.role==='technician').length?`<div class="field"><label>Worker <span class="optional-tag">optional</span></label><select id="sj-tech"><option value="">— Not assigned —</option>${(CRM_USERS||[]).filter(u=>u.role==='technician').map(u=>`<option value="${tEsc(u.name||u.email)}">${tEsc(u.name||u.email)}</option>`).join('')}</select></div>`:''}
       <div class="section-title">Services</div>
       <div id="sj-services-list">${SERVICES.map(s=>`<div class="check-row"><input type="checkbox" id="svc-${s.id}" ${preServ.includes(s.id)?'checked':''} onchange="sjQtySync('${s.id}')"><label for="svc-${s.id}">${s.name}</label><span class="svc-qty-ctl" id="sqc-${s.id}" style="display:${preServ.includes(s.id)?'inline-flex':'none'}"><button type="button" class="svc-qty-btn" onclick="sjQtyAdj('${s.id}',-1)">−</button><span class="svc-qty-val" id="sqv-${s.id}">1</span><button type="button" class="svc-qty-btn" onclick="sjQtyAdj('${s.id}',1)">+</button></span><input type="number" class="svc-price-override" id="spo-${s.id}" value="${preServ.includes(s.id)?s.price:''}" placeholder="${s.price}" title="Line total" style="display:${preServ.includes(s.id)?'inline-block':'none'}"><span class="price" id="spl-${s.id}" style="display:${preServ.includes(s.id)?'none':''}">${money(s.price)}</span></div>`).join('')}</div>
       <div id="sj-new-svc-form" style="display:none;margin:6px 0 4px;padding:8px;background:var(--surface-2);border-radius:8px;display:none"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><input type="text" id="sj-ns-name" placeholder="Service name" style="flex:2;min-width:120px"><input type="number" id="sj-ns-price" placeholder="Price" style="flex:1;min-width:72px"><button type="button" class="btn btn-sm btn-primary" onclick="sjSaveNewService(this)">Add</button><button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('sj-new-svc-form').style.display='none'">Cancel</button></div></div>
@@ -606,6 +721,7 @@ function openScheduleJob(prefillId){
       <div style="margin-bottom:6px"><button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('sj-new-prd-form').style.display='';document.getElementById('sj-np-name').focus()"><i class="ti ti-plus"></i> Add new product</button></div>
       <div class="section-title" style="margin-top:16px">Job notes</div>
       <div class="field" style="margin:0"><textarea id="sj-notes" placeholder="Access notes, customer requests\u2026">${pre?pre.notes||'':''}</textarea></div>
+      <div class="check-row" style="margin-top:14px"><input type="checkbox" id="sj-sendemail" checked><label for="sj-sendemail">Send confirmation email</label></div>
     </div>
     <div class="sheet-foot"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveJob(this)"><i class="ti ti-calendar-plus"></i> Book job</button></div>
   </div>
@@ -649,6 +765,44 @@ async function sjSaveNewProduct(btn){
     if(list){const row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" id="prd-${prd.id}" checked><label for="prd-${prd.id}">${tEsc(prd.name)}</label><span class="price">${money(prd.price)}</span>`;list.appendChild(row);}
     document.getElementById('sj-np-name').value='';document.getElementById('sj-np-price').value='';
     document.getElementById('sj-new-prd-form').style.display='none';
+    toast('Product added');
+  }catch(err){console.error(err);toast('Error saving product');}
+  finally{setBtnLoading(btn,false);}
+}
+
+async function csSaveNewService(btn){
+  const name=document.getElementById('cs-ns-name').value.trim();
+  const price=parseFloat(document.getElementById('cs-ns-price').value)||0;
+  if(!name)return;
+  setBtnLoading(btn,true);
+  try{
+    const res=await apiFetch(API_BASE+'/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,cost:0})});
+    const body=await res.json();const svc=Array.isArray(body)?body[0]:body;
+    SERVICES.push(svc);
+    const list=document.getElementById('cs-services-list');
+    if(list){const row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" id="cs-${svc.id}" checked onchange="csQtySync('${svc.id}');recalcCompleteTotal()"><label for="cs-${svc.id}">${tEsc(svc.name)}</label><span class="svc-qty-ctl" id="csqc-${svc.id}" style="display:inline-flex"><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${svc.id}',-1)">−</button><span class="svc-qty-val" id="csqv-${svc.id}">1</span><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${svc.id}',1)">+</button></span><input type="number" class="svc-price-override" id="cspo-${svc.id}" value="${svc.price}" placeholder="${svc.price}" title="Line total" oninput="recalcCompleteTotal()" style="display:inline-block"><span class="price" id="cspl-${svc.id}" style="display:none">${money(svc.price)}</span>`;list.appendChild(row);}
+    document.getElementById('cs-ns-name').value='';document.getElementById('cs-ns-price').value='';
+    document.getElementById('cs-new-svc-form').style.display='none';
+    recalcCompleteTotal();
+    toast('Service added');
+  }catch(err){console.error(err);toast('Error saving service');}
+  finally{setBtnLoading(btn,false);}
+}
+
+async function csSaveNewProduct(btn){
+  const name=document.getElementById('cs-np-name').value.trim();
+  const price=parseFloat(document.getElementById('cs-np-price').value)||0;
+  if(!name)return;
+  setBtnLoading(btn,true);
+  try{
+    const res=await apiFetch(API_BASE+'/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,price,cost:0})});
+    const body=await res.json();const prd=Array.isArray(body)?body[0]:body;
+    PRODUCTS.push(prd);
+    const list=document.getElementById('cs-products-list');
+    if(list){const row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" id="cp-${prd.id}" checked onchange="recalcCompleteTotal()"><label for="cp-${prd.id}">${tEsc(prd.name)}</label><span class="price">${money(prd.price)}</span>`;list.appendChild(row);}
+    document.getElementById('cs-np-name').value='';document.getElementById('cs-np-price').value='';
+    document.getElementById('cs-new-prd-form').style.display='none';
+    recalcCompleteTotal();
     toast('Product added');
   }catch(err){console.error(err);toast('Error saving product');}
   finally{setBtnLoading(btn,false);}
@@ -765,7 +919,7 @@ function sjTab(tab){
   }
 }
 function sjQtySync(id){const cb=document.getElementById('svc-'+id);const on=cb?.checked;const ctl=document.getElementById('sqc-'+id);if(ctl)ctl.style.display=on?'inline-flex':'none';const spo=document.getElementById('spo-'+id);if(spo){spo.style.display=on?'inline-block':'none';if(on&&!spo.value){const s=SERVICES.find(x=>x.id===id);if(s)spo.value=s.price||0;}}const spl=document.getElementById('spl-'+id);if(spl)spl.style.display=on?'none':'';if(!on){const v=document.getElementById('sqv-'+id);if(v)v.textContent='1';}}
-function sjQtyAdj(id,d){const el=document.getElementById('sqv-'+id);if(!el)return;const q=Math.max(1,parseInt(el.textContent||'1')+d);el.textContent=q;const s=SERVICES.find(x=>x.id===id);if(s){const spo=document.getElementById('spo-'+id);if(spo)spo.value=(s.price||0)*q;}}
+function sjQtyAdj(id,d){const el=document.getElementById('sqv-'+id);if(!el)return;const oldQ=parseInt(el.textContent||'1')||1;const q=Math.max(1,oldQ+d);const s=SERVICES.find(x=>x.id===id);const spo=document.getElementById('spo-'+id);if(spo){const curTotal=parseFloat(spo.value);const unit=isNaN(curTotal)?(s?s.price||0:0):curTotal/oldQ;spo.value=unit*q;}el.textContent=q;}
 function sjGetQtys(){const q={};SERVICES.forEach(s=>{const cb=document.getElementById('svc-'+s.id);if(cb?.checked){const v=document.getElementById('sqv-'+s.id);q[s.id]=parseInt(v?.textContent||'1')||1;}});return q;}
 function sjGetPrices(){const p={};SERVICES.forEach(s=>{const cb=document.getElementById('svc-'+s.id);if(cb?.checked){const inp=document.getElementById('spo-'+s.id);if(inp&&inp.value!==''){const qEl=document.getElementById('sqv-'+s.id);const q=parseInt(qEl?.textContent||'1')||1;p[s.id]=(parseFloat(inp.value)||0)/q;}}});return p;}
 function saveJob(btn){
@@ -793,9 +947,11 @@ function saveJob(btn){
       payment: '',
       notes: document.getElementById('sj-notes').value,
       techNotes: '',
+      techName: document.getElementById('sj-tech')?.value||'',
       nextServiceMonths: cust.nextServiceMonths||12,
       location: activeLoc
     };
+    const sendEmail=document.getElementById('sj-sendemail')?.checked!==false;
     setBtnLoading(btn,true,'Booking…');
     try{
       const resp=await apiFetch(API_BASE+'/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -807,7 +963,7 @@ function saveJob(btn){
         nextJobId = Math.max(nextJobId, (created.id||0)+1);
         await clearCustomerReminders(custId);
         await updateCustomerFields(cust,{snoozeUntil:null});
-        const emailSent=await sendJobEmail(API_BASE+'/api/emails/job-confirmation',created,cust);
+        const emailSent=sendEmail?await sendJobEmail(API_BASE+'/api/emails/job-confirmation',created,cust):false;
         closeModal();toast(emailSent?'Job booked - confirmation sent':'Job booked');
         showView('jobs');
       }else{throw new Error('No job returned');}
@@ -829,12 +985,16 @@ function openCompleteJob(id){
   <div class="sheet-body">
     <div class="callout callout-green" style="margin-bottom:14px"><i class="ti ti-calendar-check"></i><div><strong>${fmtDate(j.date)} \u00b7 <span id="cs-time-range">${timeRangeLabel(j.time,j.durationHours||2)}</span></strong><div style="color:var(--ink-500);margin-top:1px"><i class="ti ti-map-pin" style="font-size:12px;vertical-align:-1px"></i> ${addressLink(cc.address)}${cc.phone?' \u00b7 '+cc.phone:''}</div></div></div>
     <div class="field"><label>Job length <span class="optional-tag">set at booking</span></label><div class="callout callout-ink" style="padding:8px 12px;font-weight:600">${j.durationHours||2} hour${(j.durationHours||2)!==1?'s':''}</div></div>
-    ${(CRM_USERS||[]).filter(u=>u.role==='technician').length?`<div class="field"><label>Worker <span class="optional-tag">who did this job</span></label><select id="cs-tech"><option value="">— Not assigned —</option>${(CRM_USERS||[]).filter(u=>u.role==='technician').map(u=>`<option value="${tEsc(u.name||u.email)}" ${j.techName===(u.name||u.email)?'selected':''}>` + tEsc(u.name||u.email) + `</option>`).join('')}</select></div>`:''}
+    ${(CRM_USERS||[]).filter(u=>u.role==='technician').length?`<div class="field-row"><div class="field" style="margin:0"><label>Worker <span class="optional-tag">who did this job</span></label><select id="cs-tech"><option value="">— Not assigned —</option>${(CRM_USERS||[]).filter(u=>u.role==='technician').map(u=>`<option value="${tEsc(u.name||u.email)}" ${j.techName===(u.name||u.email)?'selected':''}>` + tEsc(u.name||u.email) + `</option>`).join('')}</select></div><div class="field" style="margin:0"><label>Custom pay for this job <span class="optional-tag">optional, overrides rate</span></label><input type="number" id="cs-techpay" value="${j.techPayOverride!=null?j.techPayOverride:''}" placeholder="e.g. 80"></div></div>`:''}
     <div class="section-title">Services performed</div>
-    ${SERVICES.map(s=>{const q=qtyOf(j,s.id);const chk=j.services.includes(s.id);const bookedPrice=CS_PRICES[s.id]!=null?CS_PRICES[s.id]:s.price;return `<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${chk?'checked':''} onchange="csQtySync('${s.id}');recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="svc-qty-ctl" id="csqc-${s.id}" style="display:${chk?'inline-flex':'none'}"><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',-1)">−</button><span class="svc-qty-val" id="csqv-${s.id}">${chk?q:1}</span><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',1)">+</button></span><input type="number" class="svc-price-override" id="cspo-${s.id}" value="${chk?bookedPrice*q:''}" placeholder="${bookedPrice*q}" title="Line total" oninput="recalcCompleteTotal()" style="display:${chk?'inline-block':'none'}"><span class="price" id="cspl-${s.id}" style="display:${chk?'none':''}">$${bookedPrice}/ea</span></div>`;}).join('')}
+    <div id="cs-services-list">${SERVICES.map(s=>{const q=qtyOf(j,s.id);const chk=j.services.includes(s.id);const bookedPrice=CS_PRICES[s.id]!=null?CS_PRICES[s.id]:s.price;return `<div class="check-row"><input type="checkbox" id="cs-${s.id}" ${chk?'checked':''} onchange="csQtySync('${s.id}');recalcCompleteTotal()"><label for="cs-${s.id}">${s.name}</label><span class="svc-qty-ctl" id="csqc-${s.id}" style="display:${chk?'inline-flex':'none'}"><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',-1)">−</button><span class="svc-qty-val" id="csqv-${s.id}">${chk?q:1}</span><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${s.id}',1)">+</button></span><input type="number" class="svc-price-override" id="cspo-${s.id}" value="${chk?bookedPrice*q:''}" placeholder="${bookedPrice*q}" title="Line total" oninput="recalcCompleteTotal()" style="display:${chk?'inline-block':'none'}"><span class="price" id="cspl-${s.id}" style="display:${chk?'none':''}">$${bookedPrice}/ea</span></div>`;}).join('')}</div>
+    <div id="cs-new-svc-form" style="display:none;margin:6px 0 4px;padding:8px;background:var(--surface-2);border-radius:8px"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><input type="text" id="cs-ns-name" placeholder="Service name" style="flex:2;min-width:120px"><input type="number" id="cs-ns-price" placeholder="Price" style="flex:1;min-width:72px"><button type="button" class="btn btn-sm btn-primary" onclick="csSaveNewService(this)">Add</button><button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('cs-new-svc-form').style.display='none'">Cancel</button></div></div>
+    <div style="margin-bottom:6px"><button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('cs-new-svc-form').style.display='';document.getElementById('cs-ns-name').focus()"><i class="ti ti-plus"></i> Add new service</button></div>
     <div class="surcharge-box"><input type="checkbox" id="cs-surcharge" ${j.surcharge?'checked':''} onchange="recalcCompleteTotal()"><label>Above 2nd floor surcharge</label><input type="number" id="cs-surcharge-amt" value="${j.surchargeAmt||''}" placeholder="$0" oninput="recalcCompleteTotal()"></div>
     <div class="section-title" style="margin-top:16px">Products sold</div>
-    ${PRODUCTS.map(p=>`<div class="check-row"><input type="checkbox" id="cp-${p.id}" ${j.products.includes(p.id)?'checked':''} onchange="recalcCompleteTotal()"><label for="cp-${p.id}">${p.name}</label><span class="price">${money(p.price)}</span></div>`).join('')}
+    <div id="cs-products-list">${PRODUCTS.map(p=>`<div class="check-row"><input type="checkbox" id="cp-${p.id}" ${j.products.includes(p.id)?'checked':''} onchange="recalcCompleteTotal()"><label for="cp-${p.id}">${p.name}</label><span class="price">${money(p.price)}</span></div>`).join('')}</div>
+    <div id="cs-new-prd-form" style="display:none;margin:6px 0 4px;padding:8px;background:var(--surface-2);border-radius:8px"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><input type="text" id="cs-np-name" placeholder="Product name" style="flex:2;min-width:120px"><input type="number" id="cs-np-price" placeholder="Price" style="flex:1;min-width:72px"><button type="button" class="btn btn-sm btn-primary" onclick="csSaveNewProduct(this)">Add</button><button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('cs-new-prd-form').style.display='none'">Cancel</button></div></div>
+    <div style="margin-bottom:6px"><button type="button" class="btn btn-sm btn-ghost" onclick="document.getElementById('cs-new-prd-form').style.display='';document.getElementById('cs-np-name').focus()"><i class="ti ti-plus"></i> Add new product</button></div>
     <div class="section-title" style="margin-top:16px">Payment</div>
     <div class="field-row" style="margin-bottom:10px"><div class="field" style="margin:0"><label>Charge total</label><input type="number" id="cs-total" value="${jobCharge(j)}" oninput="updateNet()"></div><div class="field" style="margin:0"><label>Discount <span class="optional-tag">optional</span></label><input type="number" id="cs-discount" value="${j.discount||''}" placeholder="0" oninput="updateNet()"></div></div>
     <div class="field"><label>Discount reason <span class="optional-tag">optional</span></label><input type="text" id="cs-discount-reason" value="${j.discountReason||''}" placeholder="e.g. repeat customer"></div>
@@ -845,6 +1005,7 @@ function openCompleteJob(id){
     ${cc.notes?`<div class="callout callout-ink" style="margin-bottom:10px"><i class="ti ti-user"></i><div><strong>Customer note:</strong> ${tEsc(cc.notes)}</div></div>`:''}
     ${j.notes?`<div class="callout callout-ink" style="margin-bottom:10px"><i class="ti ti-clipboard"></i><div><strong>Job note:</strong> ${tEsc(j.notes)}</div></div>`:''}
     <div class="field"><label>Tech notes</label><textarea id="cs-notes" placeholder="What you found, what you did\u2026">${j.techNotes||''}</textarea></div>
+    <div class="field"><label>Note to customer <span class="optional-tag">shown on invoice/receipt</span></label><textarea id="cs-customernote" placeholder="Thank you for your business!">${tEsc(j.customerNote||'')}</textarea></div>
     <div class="field"><label>Photos <span class="optional-tag">before / after</span></label>${j.photos&&j.photos.length?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">${j.photos.map(url=>`<img src="${url}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line)" alt="">`).join('')}</div>`:''}<input type="file" id="cs-photos" accept="image/*" multiple onchange="previewSelectedPhotos(this)"><div id="cs-photos-preview" style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"></div></div>
     <div class="field" style="margin:0"><label>Next service due in</label><select id="cs-next">${NEXT_SERVICE.map(m=>`<option value="${m}" ${(j.nextServiceMonths||12)===m?'selected':''}>${m} months</option>`).join('')}</select></div>
   </div>
@@ -852,7 +1013,7 @@ function openCompleteJob(id){
   setTimeout(()=>initPayments(j.payment||''),0);
 }
 function csQtySync(id){const cb=document.getElementById('cs-'+id);const on=cb?.checked;const ctl=document.getElementById('csqc-'+id);if(ctl)ctl.style.display=on?'inline-flex':'none';const cpo=document.getElementById('cspo-'+id);if(cpo){cpo.style.display=on?'inline-block':'none';if(on&&!cpo.value){const s=SERVICES.find(x=>x.id===id);if(s)cpo.value=s.price||0;}}const cpl=document.getElementById('cspl-'+id);if(cpl)cpl.style.display=on?'none':'';if(!on){const v=document.getElementById('csqv-'+id);if(v)v.textContent='1';}recalcCompleteTotal();}
-function csQtyAdj(id,d){const el=document.getElementById('csqv-'+id);if(!el)return;const q=Math.max(1,parseInt(el.textContent||'1')+d);el.textContent=q;const s=SERVICES.find(x=>x.id===id);if(s){const cpo=document.getElementById('cspo-'+id);if(cpo)cpo.value=(s.price||0)*q;}recalcCompleteTotal();}
+function csQtyAdj(id,d){const el=document.getElementById('csqv-'+id);if(!el)return;const oldQ=parseInt(el.textContent||'1')||1;const q=Math.max(1,oldQ+d);const s=SERVICES.find(x=>x.id===id);const cpo=document.getElementById('cspo-'+id);if(cpo){const curTotal=parseFloat(cpo.value);const unit=isNaN(curTotal)?(s?s.price||0:0):curTotal/oldQ;cpo.value=unit*q;}el.textContent=q;recalcCompleteTotal();}
 function csGetQtys(){const q={};SERVICES.forEach(s=>{const cb=document.getElementById('cs-'+s.id);if(cb?.checked){const v=document.getElementById('csqv-'+s.id);q[s.id]=parseInt(v?.textContent||'1')||1;}});return q;}
 function csGetPrices(){const p={};SERVICES.forEach(s=>{const cb=document.getElementById('cs-'+s.id);const inp=document.getElementById('cspo-'+s.id);if(cb?.checked&&inp&&inp.value!==''){const qEl=document.getElementById('csqv-'+s.id);const q=parseInt(qEl?.textContent||'1')||1;p[s.id]=(parseFloat(inp.value)||0)/q;}});return p;}
 function recalcCompleteTotal(){
@@ -926,9 +1087,12 @@ function hydrateJobModal(j){
   j.total=Math.max(0,(parseFloat(document.getElementById('cs-total').value)||0)-j.discount);
   j.payment=getPaymentString();
   j.techNotes=document.getElementById('cs-notes').value;
+  j.customerNote=document.getElementById('cs-customernote')?.value||'';
   j.nextServiceMonths=parseInt(document.getElementById('cs-next').value)||12;
   j.durationHours=CS_DURATION;
   j.techName=document.getElementById('cs-tech')?.value||j.techName||'';
+  const payOverrideEl=document.getElementById('cs-techpay');
+  j.techPayOverride=(payOverrideEl&&payOverrideEl.value!=='')?parseFloat(payOverrideEl.value):null;
 }
 function resizeImage(file,maxDim=1600,quality=0.82){
   return new Promise(resolve=>{
@@ -1001,7 +1165,9 @@ async function saveJobEdits(id,btn){
       nextServiceMonths:j.nextServiceMonths,
       durationHours:j.durationHours,
       status:j.status,
-      techName:j.techName||''
+      techName:j.techName||'',
+      techPayOverride:j.techPayOverride,
+      customerNote:j.customerNote||''
     };
     const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
@@ -1036,7 +1202,10 @@ async function completeJob(id,btn,skipEmail=false){
       photos:j.photos,
       nextServiceMonths:j.nextServiceMonths,
       durationHours:j.durationHours,
-      status:j.status
+      status:j.status,
+      techName:j.techName||'',
+      techPayOverride:j.techPayOverride,
+      customerNote:j.customerNote||''
     };
     const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Complete failed');}
@@ -1045,8 +1214,9 @@ async function completeJob(id,btn,skipEmail=false){
     if(!updated)throw new Error('No job returned');
     Object.assign(j,updated);
     const cust=customers.find(c=>c.id===j.customerId);
+    let nd=null;
     if(cust){
-      const nd=new Date(j.date);nd.setMonth(nd.getMonth()+j.nextServiceMonths);
+      nd=new Date(j.date);nd.setMonth(nd.getMonth()+j.nextServiceMonths);
       await updateCustomerFields(cust,{
         lastService:j.date,
         jobs:(cust.jobs||0)+1,
@@ -1056,6 +1226,10 @@ async function completeJob(id,btn,skipEmail=false){
       });
     }
     await clearCustomerReminders(j.customerId);
+    if(cust&&nd){
+      try{await upsertReminder(j.customerId,nd.toISOString().slice(0,10),'Next service due',null);}
+      catch(err){console.error('auto-reminder error',err);}
+    }
     let emailSent=false;
     if(!skipEmail)emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
     const isInv=[...paymentSet].includes('Invoice');
@@ -1165,7 +1339,7 @@ function openInvoice(id){
   const billName=((c.firstName||'')+' '+(c.lastName||'')).trim()||c.contactName||j.customerName;
   const statusBox=paid
     ? '<div class="callout callout-green"><i class="ti ti-circle-check"></i><div><strong>PAID</strong> \u00b7 '+j.payment+'</div></div>'
-    : '<div class="callout callout-amber"><i class="ti ti-clock"></i><div><strong>BALANCE DUE: '+money2(total)+'</strong><div style="font-size:12px;margin-top:2px;color:var(--amber)">Payment options: Cash, Check, Venmo, Zelle, CashApp</div></div></div>';
+    : '<div class="callout callout-amber"><i class="ti ti-clock"></i><div><strong>BALANCE DUE: '+money2(total)+'</strong><div style="font-size:12px;margin-top:2px;color:var(--amber)">Payment options: Cash, Check, Venmo, Zelle, CashApp, Wire</div></div></div>';
   showModal(`
   <div class="sheet-head no-print"><div class="sheet-title">${docType}</div><button class="close-x" onclick="closeModal()"><i class="ti ti-x"></i></button></div>
   <div class="sheet-body invoice" id="invoice-doc">
@@ -1184,6 +1358,7 @@ function openInvoice(id){
       <div class="row grand"><span>Total</span><span>${money2(total)}</span></div>
     </div>
     <div style="margin-top:16px">${statusBox}</div>
+    ${j.customerNote?`<div style="margin-top:14px;font-size:12.5px;color:var(--ink-500)"><strong style="color:var(--ink-900)">Note:</strong> ${tEsc(j.customerNote)}</div>`:''}
     ${j.techNotes?`<div style="margin-top:14px;font-size:12.5px;color:var(--ink-500)"><strong style="color:var(--ink-900)">Notes:</strong> ${j.techNotes}</div>`:''}
     <div class="inv-foot">Thank you for your business! We\u2019d love a review:<br><span class="mono" style="color:var(--ink-900);word-break:break-all">${SETTINGS.googleReviewUrl}</span></div>
   </div>
