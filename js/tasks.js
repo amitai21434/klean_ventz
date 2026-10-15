@@ -143,7 +143,6 @@ function taskPayloadFromTask(t){
     assignedTo:t.assignedTo||null
   };
 }
-function firstReturned(json){return Array.isArray(json)?json[0]:json;}
 function replaceTask(updated){
   const idx=tasks.findIndex(t=>t.id===updated.id);
   if(idx>=0)tasks[idx]=updated;
@@ -151,17 +150,13 @@ function replaceTask(updated){
   nextTaskId=Math.max(nextTaskId,(updated.id||0)+1);
 }
 async function createTask(payload){
-  const resp=await apiFetch(API_BASE+'/api/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create task failed');}
-  const created=firstReturned(await resp.json());
+  const created=await dbInsert('tasks',payload);
   if(!created)throw new Error('No task returned');
   replaceTask(created);
   return created;
 }
 async function updateTask(id,payload){
-  const resp=await apiFetch(`${API_BASE}/api/tasks/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update task failed');}
-  const updated=firstReturned(await resp.json());
+  const updated=await dbUpdate('tasks',id,payload);
   if(!updated)throw new Error('No task returned');
   replaceTask(updated);
   return updated;
@@ -246,8 +241,7 @@ async function followUpTask(id){
 }
 async function deleteTask(id){
   try{
-    const resp=await apiFetch(`${API_BASE}/api/tasks/${id}`,{method:'DELETE'});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete task failed');}
+    await dbDelete('tasks',id);
     tasks=tasks.filter(t=>t.id!==id);
     closeModal();toast('Task deleted');showView(currentView);
   }catch(err){console.error('deleteTask error',err);toast('Error deleting task');}

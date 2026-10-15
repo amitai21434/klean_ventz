@@ -3,17 +3,6 @@
    ============================================================ */
 const LOGO_SRC='assets/logo.jpg';
 const GOOGLE_REVIEW_URL='https://g.page/r/CdVVCz82yKK2EAE/review';
-const API_BASE='https://klean-ventz-api.fly.dev';
-const NGROK_HEADERS={'ngrok-skip-browser-warning':'true'};
-
-/* fetch wrapper that attaches the current Supabase session token to every backend request */
-async function apiFetch(url,options={}){
-  const {data:{session}}=await supabaseBrowser.auth.getSession();
-  const headers={...NGROK_HEADERS,...(options.headers||{})};
-  if(session?.access_token)headers['Authorization']='Bearer '+session.access_token;
-  return fetch(url,{...options,headers});
-}
-
 let SETTINGS={businessName:'Klean Ventz',businessSub:'Dryer Vent Cleaning & Installation LLC',phone:'732-808-3637',website:'kleanventz.com',email:'',googleReviewUrl:GOOGLE_REVIEW_URL};
 function sortByOrder(arr,order){if(!order||!order.length)return arr;const strs=order.map(String);const map=new Map(arr.map(x=>[String(x.id),x]));const sorted=strs.map(id=>map.get(id)).filter(Boolean);arr.forEach(x=>{if(!strs.includes(String(x.id)))sorted.push(x);});return sorted;}
 
@@ -361,47 +350,25 @@ function seedSourceHistory(custArr,jobsArr,svcArr,prdArr,startId,weights,tag){
   if(tag!=='mw')nextCustId=Math.max(nextCustId,cid);
   return id;
 }
-async function loadData(baseUrl = API_BASE + '/api') {
+async function loadData() {
   try {
-    const endpoints = [
-      apiFetch(baseUrl + '/customers'),
-      apiFetch(baseUrl + '/jobs'),
-      apiFetch(baseUrl + '/services'),
-      apiFetch(baseUrl + '/products'),
-      apiFetch(baseUrl + '/tasks'),
-      apiFetch(baseUrl + '/reminders'),
-      apiFetch(baseUrl + '/lead-sources'),
-    ];
-    const [custRes, jobsRes, svcRes, prdRes, tasksRes, remRes, leadRes] = await Promise.all(endpoints);
-    if (!custRes.ok || !jobsRes.ok || !svcRes.ok || !prdRes.ok || !tasksRes.ok || !remRes.ok || !leadRes.ok) {
-      throw new Error('One or more API requests failed');
-    }
-    const [custJson, jobsJson, svcJson, prdJson, tasksJson, remJson, leadJson] = await Promise.all([
-      custRes.json(), jobsRes.json(), svcRes.json(), prdRes.json(), tasksRes.json(), remRes.json(), leadRes.json()
+    const [allCustomers, allJobs, allServices, allProducts, allTasks, allReminders, leadRows] = await Promise.all([
+      dbList('customers'),
+      dbList('jobs'),
+      dbList('services'),
+      dbList('products'),
+      dbListTasks(),
+      dbList('reminders'),
+      dbList('lead_sources', 'name'),
     ]);
-
-    const allCustomers = Array.isArray(custJson) ? custJson : (custJson.customers || []);
-    const allJobs = Array.isArray(jobsJson) ? jobsJson : (jobsJson.jobs || []);
-    const allServices = Array.isArray(svcJson) ? svcJson : (svcJson.services || []);
-    const allProducts = Array.isArray(prdJson) ? prdJson : (prdJson.products || []);
-    const allTasks = Array.isArray(tasksJson) ? tasksJson : (tasksJson.tasks || []);
-    const allReminders = Array.isArray(remJson) ? remJson : (remJson.reminders || []);
-    LEAD_SOURCE_ROWS = Array.isArray(leadJson) ? leadJson : (leadJson.leadSources || []);
+    LEAD_SOURCE_ROWS = leadRows;
     LEAD_SOURCES = LEAD_SOURCE_ROWS.map(s => s.name).filter(Boolean);
 
     try{
-      const settingsRes=await apiFetch(baseUrl+'/settings');
-      if(settingsRes.ok){
-        const s=await settingsRes.json();
-        SETTINGS={...SETTINGS,...s};
-      }
+      SETTINGS={...SETTINGS,...await dbGetSettings()};
     }catch(e){console.error('settings load error',e);}
     try{
-      if(typeof isOwner==='function'&&isOwner()){
-        const usersRes=await apiFetch(baseUrl+'/users');
-        if(usersRes.ok){CRM_USERS=await usersRes.json();}
-        else{const t=await usersRes.text();console.error('users fetch failed',usersRes.status,t);window._usersErr=usersRes.status+': '+t;}
-      } else {console.warn('skipping users fetch — isOwner()=',isOwner(),'profile=',currentProfile);}
+      if(isOwner())CRM_USERS=await dbListUsers();
     }catch(e){console.error('users load error',e);window._usersErr=''+e;}
     updateBrandUI();
 
