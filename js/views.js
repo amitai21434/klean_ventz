@@ -263,7 +263,7 @@ function catalogDragStart(e,el,id,type){if(!_catDragOk){e.preventDefault();retur
 function catalogDragEnd(e,el){_catDragOk=false;el.style.opacity='';document.querySelectorAll('.svc-row,.cat-row').forEach(r=>r.classList.remove('drag-over'));}
 function catalogDragOver(e,el,id,type){if(_catDragType!==type)return;e.preventDefault();e.dataTransfer.dropEffect='move';document.querySelectorAll('.svc-row,.cat-row').forEach(r=>r.classList.remove('drag-over'));el.classList.add('drag-over');}
 function catalogDragLeave(e,el){el.classList.remove('drag-over');}
-function catalogDrop(e,el,id,type){e.preventDefault();el.classList.remove('drag-over');if(!_catDragId||_catDragId===String(id)||_catDragType!==type)return;const arr=type==='service'?SERVICES:PRODUCTS;const fromIdx=arr.findIndex(x=>String(x.id)===_catDragId);const toIdx=arr.findIndex(x=>String(x.id)===String(id));if(fromIdx<0||toIdx<0)return;const[moved]=arr.splice(fromIdx,1);arr.splice(toIdx,0,moved);const orderKey=type==='service'?'serviceOrder':'productOrder';SETTINGS[orderKey]=arr.map(x=>x.id);apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({[orderKey]:SETTINGS[orderKey]})});document.getElementById('content').innerHTML=renderCatalog();}
+function catalogDrop(e,el,id,type){e.preventDefault();el.classList.remove('drag-over');if(!_catDragId||_catDragId===String(id)||_catDragType!==type)return;const arr=type==='service'?SERVICES:PRODUCTS;const fromIdx=arr.findIndex(x=>String(x.id)===_catDragId);const toIdx=arr.findIndex(x=>String(x.id)===String(id));if(fromIdx<0||toIdx<0)return;const[moved]=arr.splice(fromIdx,1);arr.splice(toIdx,0,moved);const orderKey=type==='service'?'serviceOrder':'productOrder';SETTINGS[orderKey]=arr.map(x=>x.id);dbSaveSettings({[orderKey]:SETTINGS[orderKey]}).catch(err=>{console.error('catalog order save error',err);toast('Error saving order');});document.getElementById('content').innerHTML=renderCatalog();}
 function renderCatalog(){
   return `
   <div class="card">
@@ -304,8 +304,7 @@ function catalogRow(type,it){
   </div>`;
 }
 function catalogList(type){return type==='service'?SERVICES:PRODUCTS;}
-function catalogEndpoint(type){return type==='service'?API_BASE+'/api/services':API_BASE+'/api/products';}
-function catalogFirstReturned(json){return Array.isArray(json)?json[0]:json;}
+function catalogTable(type){return type==='service'?'services':'products';}
 function replaceCatalogItem(type,item){
   const arr=catalogList(type);
   const idx=arr.findIndex(x=>String(x.id)===String(item.id));
@@ -319,9 +318,7 @@ async function updateCatalog(type,id,field,val){
     const payload={name:it.name,price:it.price||0,cost:it.cost||0};
     if(type==='service')payload.laborCost=it.laborCost||0;
     payload[field]=val;
-    const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Update failed');}
-    const updated=catalogFirstReturned(await resp.json());
+    const updated=await dbUpdate(catalogTable(type),id,payload);
     if(!updated)throw new Error('No item returned');
     replaceCatalogItem(type,updated);
     showView('catalog');
@@ -329,8 +326,7 @@ async function updateCatalog(type,id,field,val){
 }
 async function deleteCatalog(type,id){
   try{
-    const resp=await apiFetch(`${catalogEndpoint(type)}/${id}`,{method:'DELETE'});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+    await dbDelete(catalogTable(type),id);
     if(type==='service')SERVICES=SERVICES.filter(x=>String(x.id)!==String(id));
     else PRODUCTS=PRODUCTS.filter(x=>String(x.id)!==String(id));
     showView('catalog');toast('Removed');
@@ -339,9 +335,7 @@ async function deleteCatalog(type,id){
 async function addCatalogItem(type){
   const payload={id:(type==='service'?'svc':'prd')+Date.now(),name:type==='service'?'New service':'New product',price:0,cost:0,...(type==='service'?{laborCost:0}:{}),location:activeLoc};
   try{
-    const resp=await apiFetch(catalogEndpoint(type),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
-    const created=catalogFirstReturned(await resp.json());
+    const created=await dbInsert(catalogTable(type),payload);
     if(!created)throw new Error('No item returned');
     replaceCatalogItem(type,created);
     showView('catalog');toast('Added - edit the details');
@@ -419,6 +413,7 @@ function renderSettings(){
       <div class="field-row"><div class="field" style="margin:0"><label>Phone</label><input type="text" id="set-phone" value="${SETTINGS.phone}"></div><div class="field" style="margin:0"><label>Website</label><input type="text" id="set-website" value="${SETTINGS.website}"></div></div>
       <div class="field"><label>Email</label><input type="email" id="set-email" value="${SETTINGS.email}" placeholder="your@email.com"></div>
       <div class="field"><label>Google review link</label><input type="url" id="set-review" value="${SETTINGS.googleReviewUrl}"></div>
+      <div class="field"><label>Google Maps API key <span class="optional-tag">for address autocomplete</span></label><input type="text" id="set-mapskey" value="${SETTINGS.googleMapsApiKey||''}" placeholder="AIza…" autocomplete="off"></div>
       <button class="btn btn-primary" onclick="saveSettings(this)"><i class="ti ti-check"></i> Save changes</button>
       ${renderPasswordSettings()}
       ${typeof isOwner==='function'&&isOwner()?renderUserAdmin():''}
@@ -448,13 +443,12 @@ async function saveSettings(btn){
     phone: document.getElementById('set-phone').value.trim(),
     website: document.getElementById('set-website').value.trim(),
     email: document.getElementById('set-email').value.trim(),
-    googleReviewUrl: document.getElementById('set-review').value.trim()||SETTINGS.googleReviewUrl
+    googleReviewUrl: document.getElementById('set-review').value.trim()||SETTINGS.googleReviewUrl,
+    googleMapsApiKey: document.getElementById('set-mapskey').value.trim()
   };
   setBtnLoading(btn,true,'Saving…');
   try{
-    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
-    const updated=await resp.json();
+    const updated=await dbSaveSettings(payload);
     SETTINGS={...SETTINGS,...updated};
     updateBrandUI();
     toast('Settings saved');
@@ -508,9 +502,7 @@ async function saveEmailTemplates(btn){
   };
   setBtnLoading(btn,true,'Saving…');
   try{
-    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
-    const updated=await resp.json();
+    const updated=await dbSaveSettings(payload);
     SETTINGS={...SETTINGS,...updated};
     toast('Templates saved');
   }catch(err){console.error('saveEmailTemplates error',err);toast('Error saving templates');}
@@ -554,8 +546,8 @@ async function createCrmUser(btn){
   if(!email||!password)return toast('Enter email and temporary password');
   setBtnLoading(btn,true,'CreatingÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦');
   try{
-    const resp=await apiFetch(API_BASE+'/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,role,name})});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create user failed');}
+    const created=await createCrmUserAccount({email,password,role,name});
+    if(created&&created.id&&!CRM_USERS.some(u=>u.id===created.id))CRM_USERS.push(created);
     document.getElementById('new-user-name').value='';
     document.getElementById('new-user-email').value='';
     document.getElementById('new-user-password').value='';
@@ -563,7 +555,6 @@ async function createCrmUser(btn){
   }catch(err){console.error('createCrmUser error',err);toast('Error creating user');}
   finally{setBtnLoading(btn,false);}
 }
-function leadSourceFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 function replaceLeadSourceRow(row){
   const idx=LEAD_SOURCE_ROWS.findIndex(x=>String(x.id)===String(row.id));
   if(idx>=0)LEAD_SOURCE_ROWS[idx]=row;
@@ -574,9 +565,7 @@ function replaceLeadSourceRow(row){
 async function createLeadSource(name){
   const existing=LEAD_SOURCE_ROWS.find(x=>(x.name||'').toLowerCase()===name.toLowerCase());
   if(existing)return existing;
-  const resp=await apiFetch(API_BASE+'/api/lead-sources',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
-  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create lead source failed');}
-  const created=leadSourceFirstReturned(await resp.json());
+  const created=await dbInsert('lead_sources',{name});
   if(!created)throw new Error('No lead source returned');
   replaceLeadSourceRow(created);
   return created;
@@ -593,8 +582,7 @@ async function removeLeadSource(s){
   const row=LEAD_SOURCE_ROWS.find(x=>x.name===s);
   try{
     if(row){
-      const resp=await apiFetch(`${API_BASE}/api/lead-sources/${row.id}`,{method:'DELETE'});
-      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete lead source failed');}
+      await dbDelete('lead_sources',row.id);
       LEAD_SOURCE_ROWS=LEAD_SOURCE_ROWS.filter(x=>String(x.id)!==String(row.id));
     }else{
       LEAD_SOURCE_ROWS=LEAD_SOURCE_ROWS.filter(x=>x.name!==s);

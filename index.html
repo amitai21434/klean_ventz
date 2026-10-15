@@ -6,7 +6,7 @@
 <title>Klean Ventz CRM</title>
 <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
-<link rel="stylesheet" href="css/app.css?v=28">
+<link rel="stylesheet" href="css/app.css?v=29">
 </head>
 <body>
 <div id="app-loader">
@@ -17,7 +17,7 @@
 </div>
 <div id="conn-banner" class="conn-banner">
   <i class="ti ti-plug-connected-x"></i>
-  <span>Canâ€™t connect to the server. Check that the backend is running.</span>
+  <span>Can&rsquo;t reach the database. Check your internet connection and try again.</span>
   <button class="btn btn-sm" onclick="retryLoadData()">Retry</button>
 </div>
 <div class="app" id="app">
@@ -84,12 +84,15 @@
 <div id="success-flourish" class="success-flourish"><i class="ti ti-circle-check"></i></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/auth.js?v=28"></script>
-<script src="js/data.js?v=28"></script>
-<script src="js/views.js?v=28"></script>
-<script src="js/leadsources.js?v=28"></script>
-<script src="js/tasks.js?v=28"></script>
-<script src="js/modals.js?v=28"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="js/auth.js?v=29"></script>
+<script src="js/db.js?v=29"></script>
+<script src="js/emails.js?v=29"></script>
+<script src="js/data.js?v=29"></script>
+<script src="js/views.js?v=29"></script>
+<script src="js/leadsources.js?v=29"></script>
+<script src="js/tasks.js?v=29"></script>
+<script src="js/modals.js?v=29"></script>
 <script>
   (async function init(){
     const authed=await initializeAuth();

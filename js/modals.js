@@ -25,8 +25,7 @@ async function saveWorkerPay(userId,btn){
   if(!SETTINGS.workerRates)SETTINGS.workerRates={};
   SETTINGS.workerRates[userId]={payType,payRate};
   try{
-    const resp=await apiFetch(API_BASE+'/api/settings',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({workerRates:SETTINGS.workerRates})});
-    if(!resp.ok)throw new Error('Save failed');
+    await dbSaveSettings({workerRates:SETTINGS.workerRates});
     closeModal();toast('Pay rate saved');showView('workers');
   }catch(e){toast('Error saving');setBtnLoading(btn,false);}
 }
@@ -131,29 +130,22 @@ function openLogOutcome(custId,reminderId){
     <div style="margin-top:10px;text-align:center"><button class="btn btn-sm btn-ghost" onclick="logDismiss(${custId},${reminderId||'null'})">Dismiss for now</button></div>
   </div>`);
 }
-function reminderFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 function replaceReminder(updated){
   const idx=reminders.findIndex(r=>String(r.id)===String(updated.id));
   if(idx>=0)reminders[idx]=updated;
   else reminders.push(updated);
   nextReminderId=Math.max(nextReminderId,(updated.id||0)+1);
 }
-function customerFirstReturned(json){return Array.isArray(json)?json[0]:json;}
 async function updateCustomerFields(cust,fields){
   if(!cust)return null;
-  const resp=await apiFetch(`${API_BASE}/api/customers/${cust.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(fields)});
-  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Customer save failed');}
-  const updated=customerFirstReturned(await resp.json());
+  const updated=await dbUpdate('customers',cust.id,fields);
   if(updated)Object.assign(cust,updated);
   else Object.assign(cust,fields);
   return cust;
 }
 async function clearCustomerReminders(customerId){
   const existing=reminders.filter(r=>String(r.customerId)===String(customerId));
-  await Promise.all(existing.map(async r=>{
-    const resp=await apiFetch(`${API_BASE}/api/reminders/${r.id}`,{method:'DELETE'});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
-  }));
+  await Promise.all(existing.map(r=>dbDelete('reminders',r.id)));
   reminders=reminders.filter(r=>String(r.customerId)!==String(customerId));
 }
 async function upsertReminder(custId,dueDate,reason,reminderId){
@@ -161,11 +153,7 @@ async function upsertReminder(custId,dueDate,reason,reminderId){
     ? reminders.find(x=>String(x.id)===String(reminderId))
     : reminders.find(x=>String(x.customerId)===String(custId));
   const payload={customerId:custId,dueDate,reason,location:activeLoc};
-  const url=existing?`${API_BASE}/api/reminders/${existing.id}`:API_BASE+'/api/reminders';
-  const method=existing?'PUT':'POST';
-  const resp=await apiFetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder save failed');}
-  const saved=reminderFirstReturned(await resp.json());
+  const saved=existing?await dbUpdate('reminders',existing.id,payload):await dbInsert('reminders',payload);
   if(!saved)throw new Error('No reminder returned');
   replaceReminder(saved);
   return saved;
@@ -191,8 +179,7 @@ async function logCallback(custId,reminderId){
 async function logDismiss(custId,reminderId){
   try{
     if(reminderId){
-      const resp=await apiFetch(`${API_BASE}/api/reminders/${reminderId}`,{method:'DELETE'});
-      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reminder delete failed');}
+      await dbDelete('reminders',reminderId);
       reminders=reminders.filter(r=>String(r.id)!==String(reminderId));
     }else{
       const c=customers.find(x=>x.id===custId);if(c)await updateCustomerFields(c,{snoozeUntil:addDays(dOff(0),30)});
@@ -306,10 +293,8 @@ async function loadGooglePlaces(){
       googleAutocompleteService=new google.maps.places.AutocompleteService();
       return googleAutocompleteService;
     }
-    const cfgResp=await apiFetch(API_BASE+'/api/config/maps');
-    if(!cfgResp.ok)return null;
-    const cfg=await cfgResp.json();
-    if(!cfg.enabled||!cfg.apiKey)return null;
+    const cfg={apiKey:SETTINGS.googleMapsApiKey||''};
+    if(!cfg.apiKey)return null;
     await new Promise((resolve,reject)=>{
       window.__crmGoogleMapsReady=resolve;
       const s=document.createElement('script');
@@ -393,10 +378,7 @@ function saveNewCustomer(btn){
     if(!firstName&&!lastName&&!contactName&&!corporateName)return toast('Please enter a name');
     setBtnLoading(btn,true,'Saving…');
     try{
-      const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
-      const json=await resp.json();
-      const created = Array.isArray(json)?json[0]:json;
+      const created=await dbInsert('customers',payload);
       if(created){
         customers.push(created);
         nextCustId = Math.max(nextCustId, (created.id||0)+1);
@@ -413,10 +395,7 @@ function saveNewCustomerAndBook(btn){
     if(!firstName&&!lastName&&!contactName&&!corporateName)return toast('Please enter a name');
     setBtnLoading(btn,true,'Saving…');
     try{
-      const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
-      const json=await resp.json();
-      const created = Array.isArray(json)?json[0]:json;
+      const created=await dbInsert('customers',payload);
       if(created){
         customers.push(created);
         nextCustId = Math.max(nextCustId, (created.id||0)+1);
@@ -435,9 +414,7 @@ function saveNewCustomerAndLog(btn){
     if(!firstName&&!lastName&&!contactName&&!corporateName)return toast('Please enter a name');
     setBtnLoading(btn,true,'Saving…');
     try{
-      const resp=await apiFetch(API_BASE+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
-      const json=await resp.json();const created=Array.isArray(json)?json[0]:json;
+      const created=await dbInsert('customers',payload);
       if(created){
         customers.push(created);nextCustId=Math.max(nextCustId,(created.id||0)+1);
         closeModal();openLogOutcome(created.id,null);
@@ -496,11 +473,10 @@ function confirmDeleteCustomer(id){
 async function deleteCustomerCascade(id){
   try{
     const cJobs=jobs.filter(j=>j.customerId===id);
-    await Promise.all(cJobs.map(j=>apiFetch(`${API_BASE}/api/jobs/${j.id}`,{method:'DELETE'})));
+    await Promise.all(cJobs.map(j=>dbDelete('jobs',j.id)));
     await Promise.all(cJobs.map(j=>deleteJobPhotos(j.id)));
     await clearCustomerReminders(id);
-    const resp=await apiFetch(`${API_BASE}/api/customers/${id}`,{method:'DELETE'});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+    await dbDelete('customers',id);
     jobs=jobs.filter(j=>j.customerId!==id);
     customers=customers.filter(c=>c.id!==id);
     closeModal();toast('Customer deleted');showView('customers');
@@ -514,8 +490,7 @@ function updateCust(id,field,val){
     const payload={};
     payload[field]=val;
     try{
-      const resp=await apiFetch(`${API_BASE}/api/customers/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(!resp.ok){const txt=await resp.text();console.error('Update failed',txt);toast('Error saving');}
+      await dbUpdate('customers',id,payload);
     }catch(err){console.error('updateCust error',err);toast('Error saving');}
   })();
 }
@@ -584,10 +559,7 @@ async function saveAddPastJob(customerId,btn){
   };
   setBtnLoading(btn,true,'Saving…');
   try{
-    const resp=await apiFetch(API_BASE+'/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
-    const json=await resp.json();
-    const created=Array.isArray(json)?json[0]:json;
+    const created=await dbInsert('jobs',payload);
     if(!created)throw new Error('No job returned');
     jobs.push(created);
     nextJobId=Math.max(nextJobId,(created.id||0)+1);
@@ -605,24 +577,6 @@ async function saveAddPastJob(customerId,btn){
     openCustomer(customerId);
   }catch(err){console.error('saveAddPastJob error',err);toast('Error saving job');}
   finally{setBtnLoading(btn,false);}
-}
-
-function emailJobPayload(job,cust){
-  return {
-    job,
-    customer:cust,
-    servicesText:(job.services||[]).map(svcName).join(', '),
-    productsText:(job.products||[]).map(svcName).join(', ')
-  };
-}
-async function sendJobEmail(path,job,cust){
-  if(!cust||!cust.email)return false;
-  try{
-    const {data:{session}}=await supabaseBrowser.auth.getSession();
-    const resp=await fetch(path,{method:'POST',headers:{...NGROK_HEADERS,'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(emailJobPayload(job,cust))});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Email failed');}
-    return true;
-  }catch(err){console.error('sendJobEmail error',err);return false;}
 }
 
 /* ---------------------------------------------------------- SCHEDULE JOB */
@@ -740,9 +694,7 @@ async function sjSaveNewService(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'svc'+Date.now(),name,price,cost:0})});
-    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
-    const body=await res.json();const svc=Array.isArray(body)?body[0]:body;
+    const svc=await dbInsert('services',{id:'svc'+Date.now(),name,price,cost:0,location:activeLoc});
     SERVICES.push(svc);
     const list=document.getElementById('sj-services-list');
     if(list){const row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" id="svc-${svc.id}" checked onchange="sjQtySync('${svc.id}')"><label for="svc-${svc.id}">${tEsc(svc.name)}</label><span class="svc-qty-ctl" id="sqc-${svc.id}" style="display:inline-flex"><button type="button" class="svc-qty-btn" onclick="sjQtyAdj('${svc.id}',-1)">−</button><span class="svc-qty-val" id="sqv-${svc.id}">1</span><button type="button" class="svc-qty-btn" onclick="sjQtyAdj('${svc.id}',1)">+</button></span><input type="number" class="svc-price-override" id="spo-${svc.id}" placeholder="${svc.price}" title="Price" style="display:inline-block"><span class="price" id="spl-${svc.id}" style="display:none">${money(svc.price)}</span>`;list.appendChild(row);}
@@ -759,9 +711,7 @@ async function sjSaveNewProduct(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'prd'+Date.now(),name,price,cost:0})});
-    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
-    const body=await res.json();const prd=Array.isArray(body)?body[0]:body;
+    const prd=await dbInsert('products',{id:'prd'+Date.now(),name,price,cost:0,location:activeLoc});
     PRODUCTS.push(prd);
     const list=document.getElementById('sj-products-list');
     if(list){const row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" id="prd-${prd.id}" checked><label for="prd-${prd.id}">${tEsc(prd.name)}</label><span class="price">${money(prd.price)}</span>`;list.appendChild(row);}
@@ -778,9 +728,7 @@ async function csSaveNewService(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/services',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'svc'+Date.now(),name,price,cost:0})});
-    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
-    const body=await res.json();const svc=Array.isArray(body)?body[0]:body;
+    const svc=await dbInsert('services',{id:'svc'+Date.now(),name,price,cost:0,location:activeLoc});
     SERVICES.push(svc);
     const list=document.getElementById('cs-services-list');
     if(list){const row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" id="cs-${svc.id}" checked onchange="csQtySync('${svc.id}');recalcCompleteTotal()"><label for="cs-${svc.id}">${tEsc(svc.name)}</label><span class="svc-qty-ctl" id="csqc-${svc.id}" style="display:inline-flex"><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${svc.id}',-1)">−</button><span class="svc-qty-val" id="csqv-${svc.id}">1</span><button type="button" class="svc-qty-btn" onclick="csQtyAdj('${svc.id}',1)">+</button></span><input type="number" class="svc-price-override" id="cspo-${svc.id}" value="${svc.price}" placeholder="${svc.price}" title="Line total" oninput="recalcCompleteTotal()" style="display:inline-block"><span class="price" id="cspl-${svc.id}" style="display:none">${money(svc.price)}</span>`;list.appendChild(row);}
@@ -798,9 +746,7 @@ async function csSaveNewProduct(btn){
   if(!name)return;
   setBtnLoading(btn,true);
   try{
-    const res=await apiFetch(API_BASE+'/api/products',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:'prd'+Date.now(),name,price,cost:0})});
-    if(!res.ok){const txt=await res.text();throw new Error(txt||'Create failed');}
-    const body=await res.json();const prd=Array.isArray(body)?body[0]:body;
+    const prd=await dbInsert('products',{id:'prd'+Date.now(),name,price,cost:0,location:activeLoc});
     PRODUCTS.push(prd);
     const list=document.getElementById('cs-products-list');
     if(list){const row=document.createElement('div');row.className='check-row';row.innerHTML=`<input type="checkbox" id="cp-${prd.id}" checked onchange="recalcCompleteTotal()"><label for="cp-${prd.id}">${tEsc(prd.name)}</label><span class="price">${money(prd.price)}</span>`;list.appendChild(row);}
@@ -958,16 +904,13 @@ function saveJob(btn){
     const sendEmail=document.getElementById('sj-sendemail')?.checked!==false;
     setBtnLoading(btn,true,'Booking…');
     try{
-      const resp=await apiFetch(API_BASE+'/api/jobs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Create failed');}
-      const json=await resp.json();
-      const created = Array.isArray(json)?json[0]:json;
+      const created=await dbInsert('jobs',payload);
       if(created){
         jobs.push(created);
         nextJobId = Math.max(nextJobId, (created.id||0)+1);
         await clearCustomerReminders(custId);
         await updateCustomerFields(cust,{snoozeUntil:null});
-        const emailSent=sendEmail?await sendJobEmail(API_BASE+'/api/emails/job-confirmation',created,cust):false;
+        const emailSent=sendEmail?await sendJobEmail('confirmation',created,cust):false;
         closeModal();toast(emailSent?'Job booked - confirmation sent':'Job booked');
         showView('jobs');
       }else{throw new Error('No job returned');}
@@ -1173,10 +1116,7 @@ async function saveJobEdits(id,btn){
       techPayOverride:j.techPayOverride,
       customerNote:j.customerNote||''
     };
-    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Save failed');}
-    const json=await resp.json();
-    const updated=Array.isArray(json)?json[0]:json;
+    const updated=await dbUpdate('jobs',id,payload);
     if(!updated)throw new Error('No job returned');
     Object.assign(j,updated);
     toast('Job saved');
@@ -1211,10 +1151,7 @@ async function completeJob(id,btn,skipEmail=false){
       techPayOverride:j.techPayOverride,
       customerNote:j.customerNote||''
     };
-    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Complete failed');}
-    const json=await resp.json();
-    const updated=Array.isArray(json)?json[0]:json;
+    const updated=await dbUpdate('jobs',id,payload);
     if(!updated)throw new Error('No job returned');
     Object.assign(j,updated);
     const cust=customers.find(c=>c.id===j.customerId);
@@ -1235,7 +1172,7 @@ async function completeJob(id,btn,skipEmail=false){
       catch(err){console.error('auto-reminder error',err);}
     }
     let emailSent=false;
-    if(!skipEmail)emailSent=await sendJobEmail(API_BASE+'/api/emails/job-completed',j,cust);
+    if(!skipEmail)emailSent=await sendJobEmail('completed',j,cust);
     const isInv=[...paymentSet].includes('Invoice');
     closeModal();
     toast(skipEmail?'Job completed — no email sent':(emailSent?(isInv?'Complete — invoice & review sent':'Complete — receipt & review sent'):'Complete — email not sent'));
@@ -1263,9 +1200,7 @@ async function saveReschedule(id,btn){
   const j=jobs.find(x=>x.id===id);if(!j)return;
   setBtnLoading(btn,true,'Saving…');
   try{
-    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({...j,date,time})});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Reschedule failed');}
-    const updated=await resp.json();const u=Array.isArray(updated)?updated[0]:updated;
+    const u=await dbUpdate('jobs',id,{date,time});
     if(u){const idx=jobs.findIndex(x=>x.id===id);if(idx>=0)jobs[idx]=u;}
     closeModal();toast('Job rescheduled to '+fmtDate(date));showView(currentView);
   }catch(err){console.error('saveReschedule error',err);toast('Error rescheduling job');}
@@ -1300,8 +1235,7 @@ function openCompletedJob(j){
 }
 async function toggleCheckDeposited(id,val){
   try{
-    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({checkDeposited:val})});
-    if(!resp.ok)throw new Error('Save failed');
+    await dbUpdate('jobs',id,{checkDeposited:val});
     const j=jobs.find(x=>x.id===id);if(j)j.checkDeposited=val;
     const badge=document.querySelector('#cj-check-dep~span');
     if(badge){badge.textContent=val?'Deposited':'Pending';badge.className='badge '+(val?'badge-green':'');if(!val){badge.style.background='var(--amber-bg)';badge.style.color='var(--amber)';}else{badge.style.background='';badge.style.color='';}}
@@ -1314,8 +1248,7 @@ function confirmDeleteJob(id,wasCompleted){
 async function deleteJobRecord(id,wasCompleted){
   try{
     const j=jobs.find(x=>x.id===id);
-    const resp=await apiFetch(`${API_BASE}/api/jobs/${id}`,{method:'DELETE'});
-    if(!resp.ok){const txt=await resp.text();throw new Error(txt||'Delete failed');}
+    await dbDelete('jobs',id);
     await deleteJobPhotos(id);
     jobs=jobs.filter(x=>x.id!==id);
     if(wasCompleted&&j){
